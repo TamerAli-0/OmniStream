@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.omnistream.app-mergeDebugResources-72:/values-v23/values-v23.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\black\\.gradle\\caches\\9.0-milestone-1\\transforms\\685ec39acbd38c16f6ff72397845bea5\\transformed\\work-runtime-2.9.0\\res\\values-v23\\values-v23.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,121",
+                        "endColumns": "65,62",
+                        "endOffsets": "116,179"
+                    }
+                }
+            ]
+        }
+    ]
+}
