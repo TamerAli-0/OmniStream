@@ -40,7 +40,7 @@ class WatchFlixSource(
 
     // TMDB proxy for metadata (same as FlickyStream)
     private val tmdbProxyUrl = "https://mid.vidzee.wtf/tmdb"
-    private val tmdbApiKey = "297f1b91919bae59d50ed815f8d2e14c"
+    private val tmdbApiKey = com.omnistream.BuildConfig.TMDB_API_KEY_PRIMARY
 
     // Embed providers - try multiple (ordered by reliability)
     private val embedProviders = listOf(

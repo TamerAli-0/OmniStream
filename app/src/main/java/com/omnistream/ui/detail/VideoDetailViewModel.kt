@@ -3,6 +3,8 @@ package com.omnistream.ui.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.FavoriteDao
+import com.omnistream.data.local.FavoriteEntity
 import com.omnistream.domain.model.Episode
 import com.omnistream.domain.model.Video
 import com.omnistream.source.SourceManager
@@ -17,6 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 class VideoDetailViewModel @Inject constructor(
     private val sourceManager: SourceManager,
+    private val favoriteDao: FavoriteDao,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -28,6 +31,15 @@ class VideoDetailViewModel @Inject constructor(
 
     init {
         loadVideoDetails()
+        observeFavoriteStatus()
+    }
+
+    private fun observeFavoriteStatus() {
+        viewModelScope.launch {
+            favoriteDao.isFavorite(sourceId, videoId).collect { isFav ->
+                _uiState.value = _uiState.value.copy(isFavorite = isFav)
+            }
+        }
     }
 
     private fun loadVideoDetails() {
@@ -95,24 +107,47 @@ class VideoDetailViewModel @Inject constructor(
         }
     }
 
+    fun retryLoad() {
+        loadVideoDetails()
+    }
+
     private suspend fun loadEpisodes(source: com.omnistream.source.model.VideoSource, video: Video) {
         try {
             val episodes = source.getEpisodes(video)
             _uiState.value = _uiState.value.copy(episodes = episodes)
         } catch (e: Exception) {
-            // Episodes failed but video is still shown
+            android.util.Log.e("VideoDetailViewModel", "Failed to load episodes", e)
+            _uiState.value = _uiState.value.copy(
+                episodesError = e.message ?: "Failed to load episodes"
+            )
         }
     }
 
     fun toggleFavorite() {
-        _uiState.value = _uiState.value.copy(isFavorite = !_uiState.value.isFavorite)
-        // TODO: Persist to database
+        viewModelScope.launch {
+            val video = _uiState.value.video ?: return@launch
+            if (_uiState.value.isFavorite) {
+                favoriteDao.removeFavorite(sourceId, videoId)
+            } else {
+                favoriteDao.addFavorite(
+                    FavoriteEntity(
+                        id = "$sourceId:$videoId",
+                        contentId = videoId,
+                        sourceId = sourceId,
+                        contentType = "video",
+                        title = video.title,
+                        coverUrl = video.posterUrl
+                    )
+                )
+            }
+        }
     }
 }
 
 data class VideoDetailUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
+    val episodesError: String? = null,
     val video: Video? = null,
     val episodes: List<Episode> = emptyList(),
     val isFavorite: Boolean = false

@@ -3,6 +3,8 @@ package com.omnistream.ui.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.FavoriteDao
+import com.omnistream.data.local.FavoriteEntity
 import com.omnistream.domain.model.Chapter
 import com.omnistream.domain.model.Manga
 import com.omnistream.source.SourceManager
@@ -16,6 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MangaDetailViewModel @Inject constructor(
     private val sourceManager: SourceManager,
+    private val favoriteDao: FavoriteDao,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -27,6 +30,15 @@ class MangaDetailViewModel @Inject constructor(
 
     init {
         loadMangaDetails()
+        observeFavoriteStatus()
+    }
+
+    private fun observeFavoriteStatus() {
+        viewModelScope.launch {
+            favoriteDao.isFavorite(sourceId, mangaId).collect { isFav ->
+                _uiState.value = _uiState.value.copy(isFavorite = isFav)
+            }
+        }
     }
 
     private fun loadMangaDetails() {
@@ -75,24 +87,47 @@ class MangaDetailViewModel @Inject constructor(
         }
     }
 
+    fun retryLoad() {
+        loadMangaDetails()
+    }
+
     private suspend fun loadChapters(source: com.omnistream.source.model.MangaSource, manga: Manga) {
         try {
             val chapters = source.getChapters(manga)
             _uiState.value = _uiState.value.copy(chapters = chapters)
         } catch (e: Exception) {
-            // Chapters failed but manga is still shown
+            android.util.Log.e("MangaDetailViewModel", "Failed to load chapters", e)
+            _uiState.value = _uiState.value.copy(
+                chaptersError = e.message ?: "Failed to load chapters"
+            )
         }
     }
 
     fun toggleFavorite() {
-        _uiState.value = _uiState.value.copy(isFavorite = !_uiState.value.isFavorite)
-        // TODO: Persist to database
+        viewModelScope.launch {
+            val manga = _uiState.value.manga ?: return@launch
+            if (_uiState.value.isFavorite) {
+                favoriteDao.removeFavorite(sourceId, mangaId)
+            } else {
+                favoriteDao.addFavorite(
+                    FavoriteEntity(
+                        id = "$sourceId:$mangaId",
+                        contentId = mangaId,
+                        sourceId = sourceId,
+                        contentType = "manga",
+                        title = manga.title,
+                        coverUrl = manga.coverUrl
+                    )
+                )
+            }
+        }
     }
 }
 
 data class MangaDetailUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
+    val chaptersError: String? = null,
     val manga: Manga? = null,
     val chapters: List<Chapter> = emptyList(),
     val isFavorite: Boolean = false

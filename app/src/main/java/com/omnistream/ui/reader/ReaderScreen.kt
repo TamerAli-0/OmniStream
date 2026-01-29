@@ -25,11 +25,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -55,6 +58,12 @@ fun ReaderScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showControls by remember { mutableStateOf(true) }
     val listState = rememberLazyListState()
+
+    // Track current page based on scroll position
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { index -> viewModel.setCurrentPage(index) }
+    }
 
     Box(
         modifier = Modifier
@@ -139,7 +148,7 @@ fun ReaderScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = { /* TODO: Previous chapter */ },
+                    onClick = { viewModel.goToPreviousChapter() },
                     enabled = uiState.hasPreviousChapter
                 ) {
                     Icon(
@@ -156,7 +165,7 @@ fun ReaderScreen(
                 )
 
                 IconButton(
-                    onClick = { /* TODO: Next chapter */ },
+                    onClick = { viewModel.goToNextChapter() },
                     enabled = uiState.hasNextChapter
                 ) {
                     Icon(

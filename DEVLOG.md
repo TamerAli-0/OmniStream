@@ -1,7 +1,299 @@
 # OmniStream Development Log
 
 **Last Updated:** January 29, 2026
-**Session:** WatchFlix source (vidsrc-embed/cloudnestra chain) - DECRYPT MISSION
+**Session:** Room Database + Reader Nav + API Key Security
+
+---
+
+## Jan 29, 2026 (Late Night) - Favorites Persistence, Reader Navigation, API Key Security
+
+### Room Database for Favorites (NEW)
+- Created `FavoriteEntity.kt` — Room entity with id, contentId, sourceId, contentType, title, coverUrl, addedAt
+- Created `FavoriteDao.kt` — DAO with reactive `isFavorite()` Flow, addFavorite/removeFavorite
+- Created `AppDatabase.kt` — Room database class
+- Wired into Hilt DI via `AppModule.kt` (provideAppDatabase + provideFavoriteDao)
+- **MangaDetailViewModel** — Now observes favorite status reactively, toggleFavorite persists to Room
+- **VideoDetailViewModel** — Same treatment, favorites now persist across sessions
+- **MangaDetailScreen** + **VideoDetailScreen** — Favorite button now calls viewModel.toggleFavorite()
+
+### Reader Chapter Navigation (FIXED)
+- **ReaderViewModel** — Now loads full chapter list from source on init
+  - Sorts chapters by number, finds current chapter index
+  - `goToPreviousChapter()` and `goToNextChapter()` implemented
+  - `hasPreviousChapter`/`hasNextChapter` now computed from actual chapter list
+- **ReaderScreen** — Previous/Next chapter buttons now wired up
+  - Page counter now updates on scroll via LaunchedEffect + snapshotFlow on listState
+
+### TMDB API Key Security (FIXED)
+- Added `TMDB_API_KEY_PRIMARY` and `TMDB_API_KEY_SECONDARY` to BuildConfig via build.gradle.kts
+- Keys can be overridden via local.properties (defaults to current values for dev)
+- Updated `FlickyStreamSource.kt` — uses `BuildConfig.TMDB_API_KEY_PRIMARY`
+- Updated `WatchFlixSource.kt` — uses `BuildConfig.TMDB_API_KEY_PRIMARY`
+- Updated `VidSrcSource.kt` — uses `BuildConfig.TMDB_API_KEY_SECONDARY`
+- Keys no longer hardcoded in source files
+
+### Files Created
+- `data/local/FavoriteEntity.kt`
+- `data/local/FavoriteDao.kt`
+- `data/local/AppDatabase.kt`
+
+### Files Modified
+- `di/AppModule.kt` — Room database + DAO providers
+- `ui/detail/MangaDetailViewModel.kt` — FavoriteDao injection, reactive favorite status, toggleFavorite with Room
+- `ui/detail/VideoDetailViewModel.kt` — Same as above
+- `ui/detail/MangaDetailScreen.kt` — Favorite button wired to viewModel
+- `ui/detail/VideoDetailScreen.kt` — Same
+- `ui/reader/ReaderViewModel.kt` — Full chapter list loading, prev/next navigation
+- `ui/reader/ReaderScreen.kt` — Buttons wired, page counter tracks scroll
+- `source/movie/FlickyStreamSource.kt` — BuildConfig for TMDB key
+- `source/movie/WatchFlixSource.kt` — BuildConfig for TMDB key
+- `source/movie/VidSrcSource.kt` — BuildConfig for TMDB key
+- `app/build.gradle.kts` — TMDB API key BuildConfig fields
+
+### Known Issues Remaining
+- Library screen still fetches from cloud API only (no local favorites shown)
+- No reading progress persistence
+- GogoAnime details page crashes (paused)
+
+### Build Status: SUCCESSFUL
+
+---
+
+## Jan 29, 2026 (Night) - Settings, Themes, Bug Fixes, GitHub Cleanup
+
+### Settings Screen (NEW)
+- Built full settings screen replacing "Coming Soon" placeholder
+- **Account section**: Avatar with initial, username, email, VIP/Standard badge
+- **Logout**: Confirmation dialog, clears auth, navigates to login
+- **SettingsViewModel**: Handles user data, theme prefs, and logout
+
+### Color Theme System (NEW)
+- **8 color schemes**: Purple (default), Ocean, Emerald, Sunset, Rose, Midnight, Crimson, Gold
+- Each has both dark and light variants
+- **Dark mode toggle**: Dark, Light, or System (follows device setting)
+- Theme preference saved to DataStore, persists across restarts
+- Color picker with circular swatches + checkmark on selected
+- Updated `MainViewModel` to expose theme flows
+- Updated `MainActivity` to observe and apply theme dynamically
+
+### GitHub Repository Cleanup
+- Made 7 personal repos **private**: happybirthday-asia, happybirthday3, HappyBirthday-website, HappyBirthday, Website-gf, heart, First-Anniversary-of-Love
+- All portfolio, fork, and school projects remain public
+
+### Bug Fixes (App Audit)
+Ran comprehensive 3-part audit of entire codebase. Fixed critical issues:
+
+1. **Login/Register success never reset** — After logout, returning to login screen would auto-navigate away. Added `onLoginSuccessConsumed()` and `onRegisterSuccessConsumed()` methods.
+
+2. **Library items not clickable** — Grid and list cards had empty `onClick` handlers. Now navigates to correct detail screen (manga or video) using `contentType`, `sourceId`, and `contentId`.
+
+3. **Downloads screen fake data** — Entire screen was hardcoded mock data misleading users. Replaced with honest "Coming Soon" placeholder.
+
+4. **Silent chapter/episode failures** — MangaDetailViewModel and VideoDetailViewModel caught chapter/episode loading errors silently. Now exposes `chaptersError`/`episodesError` in UI state.
+
+5. **No retry on errors** — Added retry buttons to error states in LibraryScreen, MangaDetailScreen, and VideoDetailScreen. Added `retryLoad()` to both detail ViewModels.
+
+6. **Null assertion crash** — LibraryScreen used `error!!` which could crash. Changed to safe `error ?: "Something went wrong"`.
+
+### Files Created
+- `ui/settings/SettingsViewModel.kt`
+
+### Files Modified
+- `ui/settings/SettingsScreen.kt` — Full rebuild with account, themes, dark mode, about, logout
+- `ui/theme/Theme.kt` — 8 color schemes x 2 modes, AppColorScheme enum, DarkModeOption enum
+- `ui/MainViewModel.kt` — Added colorScheme + darkMode state flows
+- `MainActivity.kt` — Observes theme prefs, passes to OmniStreamTheme
+- `data/local/UserPreferences.kt` — Added colorScheme + darkMode keys and setters
+- `ui/navigation/OmniNavigation.kt` — Added onLogout callback to settings route
+- `ui/auth/LoginViewModel.kt` — Added onLoginSuccessConsumed()
+- `ui/auth/LoginScreen.kt` — Reset success flag after consuming
+- `ui/auth/RegisterViewModel.kt` — Added onRegisterSuccessConsumed()
+- `ui/auth/RegisterScreen.kt` — Reset success flag after consuming
+- `ui/library/LibraryScreen.kt` — Fixed navigation, retry button, null safety
+- `ui/downloads/DownloadsScreen.kt` — Replaced fake data with Coming Soon
+- `ui/detail/MangaDetailViewModel.kt` — chaptersError field, retryLoad()
+- `ui/detail/MangaDetailScreen.kt` — Retry button on error
+- `ui/detail/VideoDetailViewModel.kt` — episodesError field, retryLoad()
+- `ui/detail/VideoDetailScreen.kt` — Retry button on error
+
+### Known Issues (from audit, not yet fixed)
+- Favorite button is a TODO (doesn't persist)
+- Reader previous/next chapter not implemented
+- Reader page counter doesn't update on scroll
+- No search timeout handling (could hang)
+- TMDB API keys hardcoded in source files (should use BuildConfig)
+- Search race condition with rapid queries
+
+---
+
+## Jan 29, 2026 (Evening) - Backend Deployed to Render + MongoDB Atlas
+
+### Deployment
+
+**Backend Live URL:** https://omnistream-api-q2rh.onrender.com
+**GitHub Repo:** https://github.com/TamerAli-0/omnistream-api (`.env` NOT exposed, confirmed safe)
+**Hosting:** Render (Free tier)
+**Database:** MongoDB Atlas (Cluster0, project: OmniStream)
+
+### Setup Completed
+1. Pushed `omnistream-api` to GitHub (`TamerAli-0/omnistream-api`)
+2. Connected Render to the GitHub repo for auto-deploy
+3. MongoDB Atlas cluster created (`Cluster0` on `cluster0.gyrtw6w.mongodb.net`)
+4. Database user: `moded977_db_user` (atlasAdmin role, SCRAM auth)
+5. IP Whitelist: `0.0.0.0/0` (allow all) — required because Render free tier uses dynamic IPs
+6. Updated Android app `ApiService.kt` BASE_URL from `http://10.0.2.2:3000/api` to `https://omnistream-api-q2rh.onrender.com/api`
+
+### Security Notes
+- `.env` is in `.gitignore` — credentials are NOT on GitHub
+- Render environment variables hold `MONGODB_URI` and `JWT_SECRET`
+- MongoDB still requires username + password even with open IP whitelist
+- Free tier cold starts may take ~30-50 seconds after inactivity
+- For production: upgrade Render for static IPs, restrict Atlas IP whitelist
+
+### Auth System Status: FULLY BUILT
+Everything from the previous session is complete and connected to the live backend:
+
+| Component | Status |
+|-----------|--------|
+| AccessGateScreen (passcode) | Done |
+| LoginScreen | Done |
+| RegisterScreen | Done |
+| All ViewModels | Done |
+| UserPreferences (DataStore) | Done |
+| AuthRepository | Done |
+| ApiService (pointing to Render) | Done |
+| Navigation (gate → login → home) | Done |
+| Backend API (register/login/me/sync) | Done & Live |
+| Rate limiting + brute force protection | Done |
+| JWT auth (30-day tokens) | Done |
+| bcrypt password hashing (12 rounds) | Done |
+
+### Two-Tier Access System (How It Works)
+
+**Flow:** App Launch → Access Gate (passcode) → Login/Register → Home
+
+**Tier 1 - VIP (Tamer's personal code):**
+- Bypasses all future paywalls permanently
+- SHA-256 hashed passcode stored in `AuthRepository.kt`
+
+**Tier 2 - Standard (paid users):**
+- Requires payment to Tamer, then receives the standard passcode
+- Will enforce paywall for premium content in future updates
+
+**After passcode:** Users create an account (email + username + password) saved to MongoDB. This account syncs across devices and will sync with the future website.
+
+### What's Next
+- Test the full auth flow on a real device (gate → register → login → home)
+- Build the OmniStream website (same backend, same accounts, cross-device sync)
+- Implement paywall enforcement for Standard tier users
+- Add logout and account settings
+
+---
+
+## Jan 29, 2026 - Two-Tier Access System + Backend + Sync
+
+### What Was Built
+
+**1. Two-Tier Access Gate**
+- App now requires an access password on first launch
+- **VIP tier** — full free access, bypasses future paywall
+- **Standard tier** — normal access, paywall enforcement planned for later
+- Both passwords unlock the app; tier is stored locally and on the server
+
+**2. Backend API (Node.js + Express + MongoDB Atlas)**
+- Location: `C:\Users\black\Desktop\omnistream-api`
+- User registration and login with bcrypt password hashing
+- JWT-based authentication (30-day tokens)
+- Cross-device sync endpoints (library + history)
+- Express-validator input validation
+- Endpoints: POST /register, POST /login, GET /me, GET /sync, PUT /sync
+
+**3. Android Auth Flow**
+- `AccessGateScreen` — password entry, validates VIP or Standard
+- `LoginScreen` — email/password login
+- `RegisterScreen` — email/username/password/confirm registration
+- All screens use Hilt ViewModels and DataStore persistence
+- Token persists across app restarts (skip login on relaunch)
+
+**4. Navigation Rewiring**
+- Dynamic start destination based on unlock + auth state
+- Flow: Launch -> AccessGate (if locked) -> Login (if no token) -> Home
+- Auth routes excluded from bottom nav
+
+**5. Library Sync Integration**
+- LibraryScreen now backed by LibraryViewModel fetching real sync data
+- Categories populated from server: Favorites, Reading, Plan to Read, Completed, On Hold
+- Refresh button to re-fetch sync data
+
+### Files Created
+
+**Backend (`omnistream-api/`):**
+- `package.json`, `.env`, `.gitignore`, `server.js`
+- `models/User.js`, `models/SyncData.js`
+- `middleware/auth.js`
+- `routes/auth.js`, `routes/sync.js`
+
+**Android Data Layer:**
+- `data/local/UserPreferences.kt`
+- `data/remote/ApiService.kt`
+- `data/remote/dto/AuthDtos.kt`, `data/remote/dto/SyncDtos.kt`
+- `data/repository/AuthRepository.kt`, `data/repository/SyncRepository.kt`
+
+**Android UI:**
+- `ui/auth/AccessGateScreen.kt`, `ui/auth/AccessGateViewModel.kt`
+- `ui/auth/LoginScreen.kt`, `ui/auth/LoginViewModel.kt`
+- `ui/auth/RegisterScreen.kt`, `ui/auth/RegisterViewModel.kt`
+- `ui/MainViewModel.kt`
+- `ui/library/LibraryViewModel.kt`
+
+**Files Modified:**
+- `di/AppModule.kt` — added providers for UserPreferences, ApiService, AuthRepository, SyncRepository
+- `MainActivity.kt` — added MainViewModel for dynamic start destination
+- `ui/navigation/OmniNavigation.kt` — added access_gate, login, register routes
+- `ui/library/LibraryScreen.kt` — replaced mock data with ViewModel + API sync
+
+### Paid Version Plans
+- Standard tier users will see a paywall for premium content in a future update
+- VIP tier users bypass all paywalls permanently
+- Tier is stored both locally (DataStore) and server-side (MongoDB)
+
+### OmniStream Web Plans
+- The backend API is designed to support a future web client
+- Same auth endpoints and sync data format will work for web
+- CORS is enabled on the API for cross-origin web requests
+
+### How to Run the Backend
+```bash
+cd C:\Users\black\Desktop\omnistream-api
+npm install
+# Update .env with your MongoDB Atlas URI and JWT secret
+npm start
+```
+
+### How to Test
+```bash
+# Register
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@test.com","username":"testuser","password":"123456","tier":"vip"}'
+
+# Login
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@test.com","password":"123456"}'
+
+# Get profile (use token from login response)
+curl http://localhost:3000/api/auth/me \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Sync
+curl http://localhost:3000/api/sync \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+---
+
+**Previous Session:** WatchFlix source (vidsrc-embed/cloudnestra chain) - DECRYPT MISSION
 
 ---
 

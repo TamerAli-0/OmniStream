@@ -32,8 +32,7 @@ class VidSrcSource(
     private val tmdbBaseUrl = "https://api.themoviedb.org/3"
     private val tmdbImageUrl = "https://image.tmdb.org/t/p"
 
-    // Note: In production, use BuildConfig or secure storage for API key
-    private val tmdbApiKey = "9e37d98290ee94432b67745240a04dcd"
+    private val tmdbApiKey = com.omnistream.BuildConfig.TMDB_API_KEY_SECONDARY
 
     private val json = Json {
         ignoreUnknownKeys = true

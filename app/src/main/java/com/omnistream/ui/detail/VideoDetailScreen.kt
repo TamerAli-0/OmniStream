@@ -80,7 +80,7 @@ fun VideoDetailScreen(
                 }
             },
             actions = {
-                IconButton(onClick = { /* TODO: Add to favorites */ }) {
+                IconButton(onClick = { viewModel.toggleFavorite() }) {
                     Icon(
                         if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Favorite"
@@ -107,10 +107,16 @@ fun VideoDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        uiState.error ?: "Error loading video",
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            uiState.error ?: "Error loading video",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = { viewModel.retryLoad() }) {
+                            Text("Retry")
+                        }
+                    }
                 }
             }
 

@@ -6,13 +6,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,12 +23,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,8 +44,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,29 +58,30 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.omnistream.data.remote.dto.LibraryEntryDto
 import kotlinx.coroutines.launch
 
-/**
- * Library screen inspired by Kotatsu's shelf/favorites system.
- * Shows user's saved manga and videos organized by categories.
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun LibraryScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: LibraryViewModel = hiltViewModel()
 ) {
-    // Kotatsu-style categories
-    val categories = listOf(
-        LibraryCategory("Favorites", 12),
-        LibraryCategory("Reading", 5),
-        LibraryCategory("Plan to Read", 8),
-        LibraryCategory("Completed", 23),
-        LibraryCategory("On Hold", 3)
+    val uiState by viewModel.uiState.collectAsState()
+
+    val categoryNames = listOf("Favorites", "Reading", "Plan to Read", "Completed", "On Hold")
+    val categoryData = listOf(
+        uiState.favorites,
+        uiState.reading,
+        uiState.planToRead,
+        uiState.completed,
+        uiState.onHold
     )
 
-    val pagerState = rememberPagerState(pageCount = { categories.size })
+    val pagerState = rememberPagerState(pageCount = { categoryNames.size })
     val coroutineScope = rememberCoroutineScope()
 
     var isGridView by remember { mutableStateOf(true) }
@@ -89,6 +96,9 @@ fun LibraryScreen(
                 )
             },
             actions = {
+                IconButton(onClick = { viewModel.loadLibrary() }) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                }
                 IconButton(onClick = { /* Search library */ }) {
                     Icon(Icons.Default.Search, contentDescription = "Search")
                 }
@@ -107,12 +117,12 @@ fun LibraryScreen(
             )
         )
 
-        // Category tabs (Kotatsu style)
+        // Category tabs
         TabRow(
             selectedTabIndex = pagerState.currentPage,
             containerColor = Color.Transparent
         ) {
-            categories.forEachIndexed { index, category ->
+            categoryNames.forEachIndexed { index, name ->
                 Tab(
                     selected = pagerState.currentPage == index,
                     onClick = {
@@ -123,55 +133,98 @@ fun LibraryScreen(
                     text = {
                         BadgedBox(
                             badge = {
-                                if (category.count > 0) {
+                                val count = categoryData[index].size
+                                if (count > 0) {
                                     Badge {
-                                        Text(category.count.toString())
+                                        Text(count.toString())
                                     }
                                 }
                             }
                         ) {
-                            Text(category.name)
+                            Text(name)
                         }
                     }
                 )
             }
         }
 
-        // Paged content
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { page ->
-            if (categories[page].count > 0) {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = if (isGridView) 110.dp else 300.dp),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
+        // Loading / Error states
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    items(categories[page].count) { index ->
-                        if (isGridView) {
-                            LibraryGridCard(
-                                title = "Saved Item ${index + 1}",
-                                progress = 0.1f + kotlin.random.Random.nextFloat() * 0.8f,
-                                unreadCount = (0..10).random(),
-                                onClick = { }
-                            )
-                        } else {
-                            LibraryListCard(
-                                title = "Saved Item ${index + 1}",
-                                source = "MangaDex",
-                                lastRead = "Chapter 45",
-                                unreadCount = (0..10).random(),
-                                onClick = { }
-                            )
+                    CircularProgressIndicator()
+                }
+            }
+            uiState.error != null -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            uiState.error ?: "Something went wrong",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = { viewModel.loadLibrary() }) {
+                            Text("Retry")
                         }
                     }
                 }
-            } else {
-                // Empty state
-                EmptyLibraryState(categoryName = categories[page].name)
+            }
+            else -> {
+                // Paged content
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    val items = categoryData[page]
+                    if (items.isNotEmpty()) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = if (isGridView) 110.dp else 300.dp),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(items) { entry ->
+                                val onItemClick = {
+                                    val encodedId = java.net.URLEncoder.encode(entry.contentId, "UTF-8")
+                                    val route = if (entry.contentType == "manga") {
+                                        "manga/${entry.sourceId}/$encodedId"
+                                    } else {
+                                        "video/${entry.sourceId}/$encodedId"
+                                    }
+                                    navController.navigate(route)
+                                }
+                                if (isGridView) {
+                                    LibraryGridCard(
+                                        title = entry.title,
+                                        progress = entry.progress,
+                                        unreadCount = entry.unreadCount,
+                                        imageUrl = entry.coverUrl.ifBlank { null },
+                                        onClick = onItemClick
+                                    )
+                                } else {
+                                    LibraryListCard(
+                                        title = entry.title,
+                                        source = entry.sourceId,
+                                        lastRead = entry.lastChapter,
+                                        unreadCount = entry.unreadCount,
+                                        imageUrl = entry.coverUrl.ifBlank { null },
+                                        onClick = onItemClick
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        EmptyLibraryState(categoryName = categoryNames[page])
+                    }
+                }
             }
         }
     }
@@ -195,7 +248,6 @@ private fun LibraryGridCard(
     ) {
         Column {
             Box {
-                // Cover
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -213,7 +265,6 @@ private fun LibraryGridCard(
                     }
                 }
 
-                // Unread badge (Kotatsu style - corner badge)
                 if (unreadCount > 0) {
                     Surface(
                         modifier = Modifier
@@ -232,7 +283,6 @@ private fun LibraryGridCard(
                 }
             }
 
-            // Progress bar
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth(),
@@ -240,7 +290,6 @@ private fun LibraryGridCard(
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
 
-            // Title
             Text(
                 text = title,
                 modifier = Modifier.padding(8.dp),
@@ -274,7 +323,6 @@ private fun LibraryListCard(
             modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Thumbnail
             Surface(
                 modifier = Modifier
                     .size(width = 60.dp, height = 85.dp)
@@ -291,7 +339,6 @@ private fun LibraryListCard(
                 }
             }
 
-            // Info
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -315,7 +362,6 @@ private fun LibraryListCard(
                 )
             }
 
-            // Unread badge
             if (unreadCount > 0) {
                 Badge {
                     Text(unreadCount.toString())
@@ -354,8 +400,3 @@ private fun EmptyLibraryState(categoryName: String) {
         }
     }
 }
-
-private data class LibraryCategory(
-    val name: String,
-    val count: Int
-)

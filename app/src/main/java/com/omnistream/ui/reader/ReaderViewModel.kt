@@ -22,54 +22,123 @@ class ReaderViewModel @Inject constructor(
 
     private val sourceId: String = savedStateHandle["sourceId"] ?: ""
     private val mangaId: String = java.net.URLDecoder.decode(savedStateHandle["mangaId"] ?: "", "UTF-8")
-    private val chapterId: String = java.net.URLDecoder.decode(savedStateHandle["chapterId"] ?: "", "UTF-8")
+    private var currentChapterId: String = java.net.URLDecoder.decode(savedStateHandle["chapterId"] ?: "", "UTF-8")
+
+    private var chapterList: List<Chapter> = emptyList()
+    private var currentChapterIndex: Int = -1
 
     private val _uiState = MutableStateFlow(ReaderUiState())
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
     init {
-        loadChapterPages()
+        loadChapterListThenPages()
     }
 
-    private fun loadChapterPages() {
+    private fun loadChapterListThenPages() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            android.util.Log.d("ReaderViewModel", "Loading chapter: sourceId=$sourceId, mangaId=$mangaId, chapterId=$chapterId")
+            android.util.Log.d("ReaderViewModel", "Loading chapter: sourceId=$sourceId, mangaId=$mangaId, chapterId=$currentChapterId")
 
             try {
                 val source = sourceManager.getMangaSource(sourceId)
                     ?: throw Exception("Source not found: $sourceId")
 
-                // Construct chapter URL based on source type
-                val chapterUrl = when (sourceId) {
-                    "mangadex" -> "${source.baseUrl}/chapter/$chapterId"
-                    "asuracomic" -> "${source.baseUrl}/series/$mangaId/chapter/$chapterId"
-                    "manhuaplus" -> chapterId // ManhuaPlus chapter ID is the full URL path
-                    else -> "${source.baseUrl}/chapter/$chapterId"
+                // Load chapter list for navigation
+                if (chapterList.isEmpty()) {
+                    try {
+                        val mangaUrl = when (sourceId) {
+                            "mangadex" -> "${source.baseUrl}/manga/$mangaId"
+                            "asuracomic" -> "${source.baseUrl}/series/$mangaId"
+                            else -> "${source.baseUrl}/manga/$mangaId"
+                        }
+                        val manga = Manga(
+                            id = mangaId,
+                            sourceId = sourceId,
+                            title = "",
+                            url = mangaUrl
+                        )
+                        chapterList = source.getChapters(manga).sortedBy { it.number }
+                    } catch (e: Exception) {
+                        android.util.Log.w("ReaderViewModel", "Could not load chapter list for navigation", e)
+                    }
                 }
 
-                // Create chapter object
-                val chapter = Chapter(
-                    id = chapterId,
-                    mangaId = mangaId,
-                    sourceId = sourceId,
-                    url = chapterUrl,
-                    number = extractChapterNumber(chapterId)
-                )
+                // Find current chapter index
+                currentChapterIndex = chapterList.indexOfFirst { it.id == currentChapterId }
 
-                // Get pages
-                val pages = source.getPages(chapter)
-                android.util.Log.d("ReaderViewModel", "Loaded ${pages.size} pages")
-
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    pages = pages,
-                    chapterNumber = chapter.number,
-                    referer = source.baseUrl
-                )
+                loadCurrentChapterPages(source)
 
             } catch (e: Exception) {
                 android.util.Log.e("ReaderViewModel", "Failed to load chapter", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Failed to load chapter"
+                )
+            }
+        }
+    }
+
+    private suspend fun loadCurrentChapterPages(source: com.omnistream.source.model.MangaSource) {
+        // Construct chapter URL based on source type
+        val chapterUrl = when (sourceId) {
+            "mangadex" -> "${source.baseUrl}/chapter/$currentChapterId"
+            "asuracomic" -> "${source.baseUrl}/series/$mangaId/chapter/$currentChapterId"
+            "manhuaplus" -> currentChapterId
+            else -> "${source.baseUrl}/chapter/$currentChapterId"
+        }
+
+        val chapter = Chapter(
+            id = currentChapterId,
+            mangaId = mangaId,
+            sourceId = sourceId,
+            url = chapterUrl,
+            number = extractChapterNumber(currentChapterId)
+        )
+
+        val pages = source.getPages(chapter)
+        android.util.Log.d("ReaderViewModel", "Loaded ${pages.size} pages")
+
+        _uiState.value = _uiState.value.copy(
+            isLoading = false,
+            pages = pages,
+            currentPage = 0,
+            chapterNumber = chapter.number,
+            referer = source.baseUrl,
+            hasPreviousChapter = currentChapterIndex > 0,
+            hasNextChapter = currentChapterIndex >= 0 && currentChapterIndex < chapterList.size - 1
+        )
+    }
+
+    fun goToPreviousChapter() {
+        if (currentChapterIndex <= 0) return
+        currentChapterIndex--
+        currentChapterId = chapterList[currentChapterIndex].id
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val source = sourceManager.getMangaSource(sourceId)
+                    ?: throw Exception("Source not found: $sourceId")
+                loadCurrentChapterPages(source)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Failed to load chapter"
+                )
+            }
+        }
+    }
+
+    fun goToNextChapter() {
+        if (currentChapterIndex < 0 || currentChapterIndex >= chapterList.size - 1) return
+        currentChapterIndex++
+        currentChapterId = chapterList[currentChapterIndex].id
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val source = sourceManager.getMangaSource(sourceId)
+                    ?: throw Exception("Source not found: $sourceId")
+                loadCurrentChapterPages(source)
+            } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.message ?: "Failed to load chapter"

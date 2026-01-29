@@ -1,3 +1,10 @@
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) load(file.inputStream())
+}
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -22,12 +29,27 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // TMDB API keys
+        buildConfigField("String", "TMDB_API_KEY_PRIMARY", "\"${localProperties.getProperty("TMDB_API_KEY_PRIMARY", "297f1b91919bae59d50ed815f8d2e14c")}\"")
+        buildConfigField("String", "TMDB_API_KEY_SECONDARY", "\"${localProperties.getProperty("TMDB_API_KEY_SECONDARY", "9e37d98290ee94432b67745240a04dcd")}\"")
+
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(localProperties.getProperty("RELEASE_STORE_FILE", "../release-keystore.jks"))
+            storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD", "")
+            keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS", "")
+            keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD", "")
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

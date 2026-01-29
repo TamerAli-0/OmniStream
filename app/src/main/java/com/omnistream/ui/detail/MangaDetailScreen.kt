@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Card
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,7 +68,7 @@ fun MangaDetailScreen(
                 }
             },
             actions = {
-                IconButton(onClick = { /* TODO: Add to favorites */ }) {
+                IconButton(onClick = { viewModel.toggleFavorite() }) {
                     Icon(
                         if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Favorite"
@@ -94,10 +95,16 @@ fun MangaDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        uiState.error ?: "Error loading manga",
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            uiState.error ?: "Error loading manga",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = { viewModel.retryLoad() }) {
+                            Text("Retry")
+                        }
+                    }
                 }
             }
 

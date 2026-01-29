@@ -37,7 +37,7 @@ class FlickyStreamSource(
 
     // Vidzee TMDB proxy API
     private val tmdbProxyUrl = "https://mid.vidzee.wtf/tmdb"
-    private val tmdbApiKey = "297f1b91919bae59d50ed815f8d2e14c"
+    private val tmdbApiKey = com.omnistream.BuildConfig.TMDB_API_KEY_PRIMARY
 
     // Vidzee decryption key (cached)
     private var vidzeeKey: String? = null
