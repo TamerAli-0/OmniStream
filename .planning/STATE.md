@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-01-29)
 
 Phase: 8 -- Foundation, Bug Fixes, and Progress Tracking
 Plan: --
-Status: Ready to plan
+Status: Context gathered, ready to plan
 Progress: [..........] 0/5 phases
-Last activity: 2026-01-29 -- Roadmap created for v2.0 (phases 8-12)
+Last activity: 2026-01-30 -- Phase 8 context gathered (discuss-phase)
 
 ## Performance Metrics
 
@@ -58,9 +58,9 @@ Phases completed: 0/5
 
 ## Session Continuity
 
-Last session ended: 2026-01-29
+Last session ended: 2026-01-30
 Next step: Run `/gsd:plan-phase 8` to create executable plan for Phase 8
-Key context for next session: Phase 8 is the database foundation -- Room migration v1->v2 must add all three tables in one migration. Bug fixes (library, search debounce, reading progress) and Continue Watching/Reading row are all in scope.
+Key context for next session: Phase 8 context gathered. Key decisions: separate Continue Watching/Reading rows at top of Home, dual-write favorites (Room + cloud), auto-save manga progress every 10-15s, video progress saved on pause/exit, resume prompt for video, exact page resume for manga. See 08-CONTEXT.md for full decisions.
 
 ---
-*Last updated: 2026-01-29*
+*Last updated: 2026-01-30*
