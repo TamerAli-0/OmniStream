@@ -48,13 +48,20 @@ class PlayerViewModel @Inject constructor(
                 }
                 android.util.Log.d("PlayerViewModel", "Constructed episode URL: $episodeUrl")
 
+                // Extract season and episode numbers from episodeId (format: tv-12345_s1_e5)
+                val seasonEpisodeMatch = Regex("""_s(\d+)_e(\d+)""").find(episodeId)
+                val season = seasonEpisodeMatch?.groupValues?.get(1)?.toIntOrNull()
+                val episodeNum = seasonEpisodeMatch?.groupValues?.get(2)?.toIntOrNull()
+                    ?: extractEpisodeNumber(episodeId)
+
                 // Create episode object
                 val episode = Episode(
                     id = episodeId,
                     videoId = videoId,
                     sourceId = sourceId,
                     url = episodeUrl,
-                    number = extractEpisodeNumber(episodeId)
+                    number = episodeNum,
+                    season = season
                 )
 
                 // Get video links

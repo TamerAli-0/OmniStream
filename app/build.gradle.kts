@@ -88,14 +88,14 @@ dependencies {
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
-    // Network - OkHttp + Jsoup
+    // Network - OkHttp + Jsoup + Brotli support
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.squareup.okhttp3:okhttp-brotli:4.12.0")
     implementation("org.jsoup:jsoup:1.17.2")
 
-    // Image Loading - Coil with OkHttp for proper header support
+    // Image Loading - Coil (uses OkHttp internally by default in 2.x)
     implementation("io.coil-kt:coil-compose:2.5.0")
-    implementation("io.coil-kt:coil-okhttp:2.5.0")
 
     // Video Player - Media3 ExoPlayer
     implementation("androidx.media3:media3-exoplayer:1.2.1")

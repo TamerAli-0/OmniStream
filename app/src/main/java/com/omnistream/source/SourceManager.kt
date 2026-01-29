@@ -3,12 +3,13 @@ package com.omnistream.source
 import android.content.Context
 import com.omnistream.core.network.OmniHttpClient
 import com.omnistream.source.anime.AnimeKaiSource
-import com.omnistream.source.anime.GogoAnimeSource
+// import com.omnistream.source.anime.GogoAnimeSource  // Paused - will revisit later
 import com.omnistream.source.manga.MangaDexSource
 import com.omnistream.source.manga.ManhuaPlusSource
 import com.omnistream.source.model.MangaSource
 import com.omnistream.source.movie.FlickyStreamSource
 import com.omnistream.source.movie.GoojaraSource
+import com.omnistream.source.movie.WatchFlixSource
 import com.omnistream.source.model.SourceMetadata
 import com.omnistream.source.model.VideoSource
 import kotlinx.coroutines.Dispatchers
@@ -48,11 +49,12 @@ class SourceManager @Inject constructor(
         registerMangaSource(ManhuaPlusSource(httpClient))    // Manhua/Manhwa
 
         // Video sources - Anime
-        registerVideoSource(GogoAnimeSource(httpClient))         // GogoAnime (primary)
+        // registerVideoSource(GogoAnimeSource(httpClient))         // GogoAnime - PAUSED (will revisit later)
         registerVideoSource(AnimeKaiSource(context, httpClient))  // AnimeKai (WebView extraction, backup)
 
         // Video sources - Movies & TV
-        registerVideoSource(FlickyStreamSource(httpClient))  // Movies & TV
+        registerVideoSource(FlickyStreamSource(httpClient))  // Movies & TV (vidzee.wtf decryption)
+        registerVideoSource(WatchFlixSource(httpClient))     // Movies & TV (vidsrc-embed/cloudnestra chain)
     }
 
     fun registerMangaSource(source: MangaSource) {
