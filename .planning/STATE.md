@@ -5,14 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-01-29)
 
 **Core value:** Users can discover, stream, and read content from multiple sources in one app with a seamless, crash-free experience.
-**Current focus:** Not started (defining requirements)
+**Current focus:** v2.0 -- Bug fixes, downloads, player upgrades, search improvements, notifications (sideload distribution)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 8 -- Foundation, Bug Fixes, and Progress Tracking
 Plan: --
-Status: Defining requirements
-Last activity: 2026-01-29 -- Milestone v2.0 started
+Status: Ready to plan
+Progress: [..........] 0/5 phases
+Last activity: 2026-01-29 -- Roadmap created for v2.0 (phases 8-12)
+
+## Performance Metrics
+
+Plans completed: 0
+Requirements delivered: 0/19
+Phases completed: 0/5
 
 ## Accumulated Context
 
@@ -22,21 +29,38 @@ Last activity: 2026-01-29 -- Milestone v2.0 started
 - WatchFlix uses simple 3-layer HTML parsing (no encryption)
 - TMDB keys moved to BuildConfig for security
 - Room database chosen for favorites (replaces cloud-only approach)
+- Distribution: Sideload only for v2.0 (Play Store incompatible with scraping architecture)
+- Single Room migration v1->v2 adds all three new tables (downloads, watch_history, search_history)
+- Zero new production dependencies needed for v2.0 features
 
 ### Known Issues
-- Library screen only shows cloud sync data, not local Room favorites
-- No reading progress persistence (chapter position lost on exit)
-- GogoAnime details page crashes (paused, selectors may be wrong)
-- Search race condition with rapid typing (no debounce)
-- No search timeout handling
-- Downloads screen is placeholder
+- Library screen only shows cloud sync data, not local Room favorites (BUG-01, Phase 8)
+- No reading progress persistence (BUG-03, Phase 8)
+- GogoAnime details page crashes (deferred to Future, not in v2.0 scope)
+- Search race condition with rapid typing (BUG-02, Phase 8)
+- No search timeout handling (SEARCH-02, Phase 10)
+- Downloads screen is placeholder (DL-01 through DL-04, Phase 9)
 
 ### Technical Notes
 - Backend: https://omnistream-api-q2rh.onrender.com (Render free tier)
 - MongoDB Atlas: cluster0.gyrtw6w.mongodb.net
 - Test device: Infinix Note 30
-- Vidzee API key secret: "b3f2a9d4c6e1f8a7b" (AES-256-GCM)
-- Vidzee decrypted key: used for AES-256-CBC link decryption
+- Codebase: 67 Kotlin files, MVVM + Clean Architecture, Hilt DI
+- Room DB v1 has only FavoriteEntity (no migrations yet)
+- Media3 ExoPlayer already has subtitle selection, speed controls, resize, PiP button wired up
+- Player features partially implemented -- Phase 11/12 complete what exists
+
+### Todos
+- None yet (planning phase)
+
+### Blockers
+- None
+
+## Session Continuity
+
+Last session ended: 2026-01-29
+Next step: Run `/gsd:plan-phase 8` to create executable plan for Phase 8
+Key context for next session: Phase 8 is the database foundation -- Room migration v1->v2 must add all three tables in one migration. Bug fixes (library, search debounce, reading progress) and Continue Watching/Reading row are all in scope.
 
 ---
 *Last updated: 2026-01-29*

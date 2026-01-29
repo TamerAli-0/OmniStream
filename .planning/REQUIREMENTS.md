@@ -56,12 +56,28 @@
 
 ## Traceability
 
-<!-- Filled by roadmapper -->
-
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| | | |
+| BUG-01 | Phase 8 | Pending |
+| BUG-02 | Phase 8 | Pending |
+| BUG-03 | Phase 8 | Pending |
+| DL-01 | Phase 9 | Pending |
+| DL-02 | Phase 9 | Pending |
+| DL-03 | Phase 9 | Pending |
+| DL-04 | Phase 9 | Pending |
+| PLAYER-01 | Phase 8 | Pending |
+| PLAYER-02 | Phase 11 | Pending |
+| PLAYER-03 | Phase 11 | Pending |
+| PLAYER-04 | Phase 11 | Pending |
+| PLAYER-05 | Phase 12 | Pending |
+| PLAYER-06 | Phase 12 | Pending |
+| PLAYER-07 | Phase 12 | Pending |
+| PLAYER-08 | Phase 12 | Pending |
+| SEARCH-01 | Phase 10 | Pending |
+| SEARCH-02 | Phase 10 | Pending |
+| SEARCH-03 | Phase 10 | Pending |
+| NOTIF-01 | Phase 12 | Pending |
 
 ---
-*18 requirements across 5 categories*
+*19 requirements across 5 categories*
 *Last updated: 2026-01-29*
