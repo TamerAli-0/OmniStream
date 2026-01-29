@@ -1,6 +1,5 @@
 package com.omnistream.ui.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -34,6 +33,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.omnistream.ui.auth.AccessGateScreen
+import com.omnistream.ui.auth.LoginScreen
+import com.omnistream.ui.auth.RegisterScreen
 import com.omnistream.ui.browse.BrowseScreen
 import com.omnistream.ui.detail.MangaDetailScreen
 import com.omnistream.ui.detail.VideoDetailScreen
@@ -99,15 +101,20 @@ val bottomNavItems = listOf(
     Screen.Downloads
 )
 
+// Auth routes (no bottom nav)
+private val authRoutes = setOf("access_gate", "login", "register")
+
 @Composable
 fun OmniNavigation(
+    startDestination: String = Screen.Home.route,
     navController: NavHostController = rememberNavController()
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val currentRoute = currentDestination?.route
 
-    // Check if current route should show bottom nav
-    val showBottomNav = bottomNavItems.any { screen ->
+    // Show bottom nav only on main tabs (not auth screens)
+    val showBottomNav = currentRoute !in authRoutes && bottomNavItems.any { screen ->
         currentDestination?.hierarchy?.any { it.route == screen.route } == true
     }
 
@@ -146,7 +153,7 @@ fun OmniNavigation(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding),
             enterTransition = {
                 fadeIn(animationSpec = tween(200))
@@ -161,7 +168,44 @@ fun OmniNavigation(
                 fadeOut(animationSpec = tween(200))
             }
         ) {
-            // Main tabs
+            // --- Auth screens ---
+            composable("access_gate") {
+                AccessGateScreen(
+                    onUnlocked = {
+                        navController.navigate("login") {
+                            popUpTo("access_gate") { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable("login") {
+                LoginScreen(
+                    onLoginSuccess = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate("register")
+                    }
+                )
+            }
+
+            composable("register") {
+                RegisterScreen(
+                    onRegisterSuccess = {
+                        navController.navigate(Screen.Home.route) {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    },
+                    onNavigateToLogin = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+
+            // --- Main tabs ---
             composable(Screen.Home.route) {
                 HomeScreen(navController = navController)
             }
@@ -184,7 +228,14 @@ fun OmniNavigation(
 
             // Settings
             composable("settings") {
-                SettingsScreen(navController = navController)
+                SettingsScreen(
+                    navController = navController,
+                    onLogout = {
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                )
             }
 
             // Manga detail
