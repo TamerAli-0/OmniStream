@@ -1,5 +1,6 @@
 package com.omnistream.ui.detail
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,21 +12,27 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,11 +46,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -106,130 +117,264 @@ fun VideoDetailScreen(
             uiState.video != null -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    // Backdrop/Poster
+                    // Hero section with backdrop and poster
                     item {
-                        Surface(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .aspectRatio(16f / 9f)
-                                .clip(RoundedCornerShape(12.dp)),
-                            color = MaterialTheme.colorScheme.surfaceVariant
+                                .height(280.dp)
                         ) {
-                            Box {
-                                val imageUrl = uiState.video?.backdropUrl ?: uiState.video?.posterUrl
-                                if (imageUrl != null) {
-                                    AsyncImage(
-                                        model = imageUrl,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
+                            // Backdrop image
+                            val backdropUrl = uiState.video?.backdropUrl ?: uiState.video?.posterUrl
+                            if (backdropUrl != null) {
+                                AsyncImage(
+                                    model = backdropUrl,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                )
+                            }
+
+                            // Gradient overlay
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.Transparent,
+                                                MaterialTheme.colorScheme.surface.copy(alpha = 0.3f),
+                                                MaterialTheme.colorScheme.surface
+                                            ),
+                                            startY = 0f,
+                                            endY = Float.POSITIVE_INFINITY
+                                        )
                                     )
+                            )
+
+                            // Poster overlay (bottom left)
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(horizontal = 16.dp)
+                                    .offset(y = 60.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                // Poster
+                                Card(
+                                    modifier = Modifier
+                                        .width(120.dp)
+                                        .aspectRatio(2f / 3f)
+                                        .shadow(8.dp, RoundedCornerShape(8.dp)),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    val posterUrl = uiState.video?.posterUrl
+                                    if (posterUrl != null) {
+                                        AsyncImage(
+                                            model = posterUrl,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Default.PlayArrow,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(48.dp),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
                                 }
 
-                                // Play button overlay for movies
-                                if (uiState.episodes.size == 1) {
-                                    Button(
-                                        onClick = {
-                                            uiState.episodes.firstOrNull()?.let { episode ->
-                                                val encodedVideoId = URLEncoder.encode(videoId, "UTF-8")
-                                                val encodedEpisodeId = URLEncoder.encode(episode.id, "UTF-8")
-                                                navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId")
-                                            }
-                                        },
-                                        modifier = Modifier.align(Alignment.Center)
+                                // Title and basic info next to poster
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(bottom = 8.dp)
+                                ) {
+                                    Text(
+                                        text = uiState.video?.title ?: "",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(Icons.Default.PlayArrow, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Play")
+                                        uiState.video?.year?.let { year ->
+                                            Text(
+                                                text = year.toString(),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                            )
+                                        }
+
+                                        uiState.video?.rating?.let { rating ->
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Star,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp),
+                                                    tint = Color(0xFFFFB800)
+                                                )
+                                                Text(
+                                                    text = String.format("%.1f", rating),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                            }
+                                        }
+
+                                        uiState.video?.duration?.let { duration ->
+                                            Text(
+                                                text = "${duration}min",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Title and info
+                    // Spacer for poster overlap
                     item {
-                        Column {
-                            Text(
-                                text = uiState.video?.title ?: "",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Spacer(modifier = Modifier.height(70.dp))
+                    }
 
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                uiState.video?.year?.let { year ->
-                                    Text(
-                                        text = year.toString(),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    // Play button and actions
+                    item {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Play button for movies (single episode)
+                            if (uiState.episodes.size == 1) {
+                                Button(
+                                    onClick = {
+                                        uiState.episodes.firstOrNull()?.let { episode ->
+                                            val encodedVideoId = URLEncoder.encode(videoId, "UTF-8")
+                                            val encodedEpisodeId = URLEncoder.encode(episode.id, "UTF-8")
+                                            navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId")
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary
                                     )
-                                }
-
-                                uiState.video?.rating?.let { rating ->
-                                    Text(
-                                        text = "★ ${String.format("%.1f", rating)}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.primary
+                                ) {
+                                    Icon(
+                                        Icons.Default.PlayArrow,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp)
                                     )
-                                }
-
-                                uiState.video?.duration?.let { duration ->
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "${duration}min",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        "Play Now",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
 
+                            // Genres
                             if (uiState.video?.genres?.isNotEmpty() == true) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = uiState.video?.genres?.joinToString(", ") ?: "",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    uiState.video?.genres?.take(4)?.forEach { genre ->
+                                        Surface(
+                                            shape = RoundedCornerShape(16.dp),
+                                            color = MaterialTheme.colorScheme.secondaryContainer
+                                        ) {
+                                            Text(
+                                                text = genre,
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
 
                     // Description
                     uiState.video?.description?.let { description ->
-                        item {
-                            Text(
-                                text = description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                            )
+                        if (description.isNotBlank()) {
+                            item {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "Overview",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = description,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                                        lineHeight = 22.sp
+                                    )
+                                }
+                            }
                         }
                     }
 
-                    // Episodes (for TV shows/anime)
+                    // Episodes section (for TV shows/anime)
                     if (uiState.episodes.size > 1) {
                         item {
-                            Text(
-                                text = "Episodes (${uiState.episodes.size})",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Column(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = "Episodes (${uiState.episodes.size})",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
 
                         items(uiState.episodes) { episode ->
-                            EpisodeItem(
-                                episode = episode,
-                                onClick = {
-                                    val encodedVideoId = URLEncoder.encode(videoId, "UTF-8")
-                                    val encodedEpisodeId = URLEncoder.encode(episode.id, "UTF-8")
-                                    navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId")
-                                }
-                            )
+                            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                                EpisodeItem(
+                                    episode = episode,
+                                    onClick = {
+                                        val encodedVideoId = URLEncoder.encode(videoId, "UTF-8")
+                                        val encodedEpisodeId = URLEncoder.encode(episode.id, "UTF-8")
+                                        navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId")
+                                    }
+                                )
+                            }
                         }
                     }
                 }

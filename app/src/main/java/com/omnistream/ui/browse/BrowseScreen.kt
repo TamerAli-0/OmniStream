@@ -1,31 +1,40 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.omnistream.ui.browse
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -36,11 +45,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -48,7 +59,6 @@ import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Video
 import java.net.URLEncoder
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowseScreen(
     navController: NavController,
@@ -56,23 +66,38 @@ fun BrowseScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         TopAppBar(
             title = {
                 Text(
                     "Browse",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             },
             actions = {
-                IconButton(onClick = { viewModel.refresh() }) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                IconButton(
+                    onClick = { viewModel.refresh() },
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                ) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent
-            )
+            ),
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
 
         // Source tabs
@@ -80,17 +105,36 @@ fun BrowseScreen(
             ScrollableTabRow(
                 selectedTabIndex = uiState.selectedSourceIndex.coerceAtLeast(0),
                 containerColor = Color.Transparent,
-                edgePadding = 16.dp
+                edgePadding = 16.dp,
+                indicator = { tabPositions ->
+                    if (uiState.selectedSourceIndex >= 0 && uiState.selectedSourceIndex < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.selectedSourceIndex]),
+                            color = MaterialTheme.colorScheme.primary,
+                            height = 3.dp
+                        )
+                    }
+                },
+                divider = {}
             ) {
                 uiState.sources.forEachIndexed { index, source ->
                     Tab(
                         selected = uiState.selectedSourceIndex == index,
                         onClick = { viewModel.selectSource(index) },
-                        text = { Text(source.name) }
+                        text = {
+                            Text(
+                                source.name,
+                                fontWeight = if (uiState.selectedSourceIndex == index) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Content
         when {
@@ -99,7 +143,19 @@ fun BrowseScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            "Loading content...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
 
@@ -108,14 +164,17 @@ fun BrowseScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         Text(
                             uiState.error ?: "Error",
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(16.dp)
+                            style = MaterialTheme.typography.bodyLarge
                         )
                         TextButton(onClick = { viewModel.refresh() }) {
-                            Text("Retry")
+                            Text("Retry", fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -123,7 +182,7 @@ fun BrowseScreen(
 
             uiState.mangaItems.isNotEmpty() -> {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 110.dp),
+                    columns = GridCells.Adaptive(minSize = 115.dp),
                     contentPadding = PaddingValues(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -143,7 +202,7 @@ fun BrowseScreen(
 
             uiState.videoItems.isNotEmpty() -> {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 110.dp),
+                    columns = GridCells.Adaptive(minSize = 115.dp),
                     contentPadding = PaddingValues(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -166,10 +225,21 @@ fun BrowseScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        "No content available",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "No content available",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            "Select a different source or try again",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
                 }
             }
         }
@@ -185,18 +255,18 @@ private fun MangaBrowseCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            Surface(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(0.7f)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-                color = MaterialTheme.colorScheme.surfaceVariant
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             ) {
                 if (manga.coverUrl != null) {
                     AsyncImage(
@@ -206,26 +276,73 @@ private fun MangaBrowseCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Box(
+                    Surface(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                manga.title.take(2).uppercase(),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
+
+                // Gradient overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                            )
+                        )
+                )
+
+                // Status badge
+                manga.status.name.takeIf { it != "UNKNOWN" }?.let { status ->
+                    Surface(
+                        modifier = Modifier
+                            .padding(6.dp)
+                            .align(Alignment.TopEnd),
+                        shape = RoundedCornerShape(6.dp),
+                        color = when (status) {
+                            "ONGOING" -> Color(0xFF4CAF50).copy(alpha = 0.9f)
+                            "COMPLETED" -> MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                            else -> Color.Black.copy(alpha = 0.7f)
+                        }
                     ) {
                         Text(
-                            manga.title.take(2).uppercase(),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = status.take(3),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 }
             }
 
-            Column(modifier = Modifier.padding(8.dp)) {
+            Column(
+                modifier = Modifier.padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(
                     text = manga.title,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -241,18 +358,18 @@ private fun VideoBrowseCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            Surface(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(0.67f)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
-                color = MaterialTheme.colorScheme.surfaceVariant
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             ) {
                 if (video.posterUrl != null) {
                     AsyncImage(
@@ -262,32 +379,86 @@ private fun VideoBrowseCard(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Box(
+                    Surface(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
-                        Text(
-                            video.title.take(2).uppercase(),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                video.title.take(2).uppercase(),
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
+
+                // Gradient overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
+                            )
                         )
+                )
+
+                // Rating badge
+                video.rating?.let { rating ->
+                    Surface(
+                        modifier = Modifier
+                            .padding(6.dp)
+                            .align(Alignment.TopEnd),
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color.Black.copy(alpha = 0.7f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = null,
+                                modifier = Modifier.size(10.dp),
+                                tint = Color(0xFFFFB800)
+                            )
+                            Text(
+                                String.format("%.1f", rating),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }
 
-            Column(modifier = Modifier.padding(8.dp)) {
+            Column(
+                modifier = Modifier.padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(
                     text = video.title,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 video.year?.let { year ->
                     Text(
                         text = year.toString(),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }

@@ -44,13 +44,11 @@ class VideoDetailViewModel @Inject constructor(
                     "gogoanime" -> "${source.baseUrl}/category/$videoId"
                     "vidsrc" -> "${source.baseUrl}/embed/${if (videoId.startsWith("movie")) "movie" else "tv"}/${videoId.substringAfter("-")}"
                     "animekai" -> "${source.baseUrl}/watch/$videoId"
-                    "flickystream" -> {
-                        // FlickyStream uses /movie/ or /tv/ prefix based on content type
-                        if (videoId.all { it.isDigit() }) {
-                            "${source.baseUrl}/movie/$videoId"
-                        } else {
-                            "${source.baseUrl}/$videoId"
-                        }
+                    "flickystream", "watchflix" -> {
+                        // Handle prefixed video IDs (movie-12345 or tv-12345)
+                        val typePrefix = if (videoId.startsWith("tv-")) "tv" else "movie"
+                        val tmdbId = videoId.substringAfter("-", videoId)
+                        "${source.baseUrl}/$typePrefix/$tmdbId"
                     }
                     "goojara" -> "${source.baseUrl}/$videoId"
                     else -> "${source.baseUrl}/$videoId"

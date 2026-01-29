@@ -2,16 +2,20 @@ package com.omnistream.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.omnistream.domain.model.HomeSection
 import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Video
 import com.omnistream.source.SourceManager
+import com.omnistream.source.SourceStatus
+import com.omnistream.source.model.MangaSource
+import com.omnistream.source.model.VideoSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 @HiltViewModel
@@ -22,6 +26,9 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    // Cache for source health status
+    private val sourceHealth = mutableMapOf<String, SourceHealth>()
+
     init {
         loadHomeContent()
     }
@@ -29,13 +36,14 @@ class HomeViewModel @Inject constructor(
     fun loadHomeContent() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            android.util.Log.d("HomeViewModel", "Starting to load home content")
+            android.util.Log.d("HomeViewModel", "Starting to load home content with source prioritization")
 
             try {
-                // Load manga from all sources
-                val mangaDeferred = async { loadMangaContent() }
+                // First, test all sources to determine which are working
+                testSourceHealth()
 
-                // Load video content (anime + movies)
+                // Load content from sources, prioritized by health/speed
+                val mangaDeferred = async { loadMangaContent() }
                 val videoDeferred = async { loadVideoContent() }
 
                 val mangaSections = mangaDeferred.await()
@@ -58,37 +66,169 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Test health of all sources with quick connectivity checks.
+     * This helps prioritize working sources and avoid slow/broken ones.
+     */
+    private suspend fun testSourceHealth() {
+        android.util.Log.d("HomeViewModel", "Testing source health...")
+
+        val videoSources = sourceManager.getAllVideoSources()
+        val mangaSources = sourceManager.getAllMangaSources()
+
+        // Test video sources in parallel with timeout
+        val videoHealthTests = videoSources.map { source ->
+            viewModelScope.async {
+                val startTime = System.currentTimeMillis()
+                try {
+                    // Quick ping test with 5 second timeout
+                    val isWorking = withTimeoutOrNull(5000L) {
+                        source.ping()
+                    } ?: false
+
+                    val latency = System.currentTimeMillis() - startTime
+                    val health = SourceHealth(
+                        sourceId = source.id,
+                        isWorking = isWorking,
+                        latency = latency,
+                        status = when {
+                            !isWorking -> SourceStatus.BROKEN
+                            latency > 3000 -> SourceStatus.SLOW
+                            latency > 1500 -> SourceStatus.NORMAL
+                            else -> SourceStatus.FAST
+                        }
+                    )
+                    android.util.Log.d("HomeViewModel", "Source ${source.name}: ${health.status} (${latency}ms)")
+                    health
+                } catch (e: Exception) {
+                    android.util.Log.e("HomeViewModel", "Source ${source.name} health check failed", e)
+                    SourceHealth(source.id, false, Long.MAX_VALUE, SourceStatus.BROKEN)
+                }
+            }
+        }
+
+        // Test manga sources in parallel with timeout
+        val mangaHealthTests = mangaSources.map { source ->
+            viewModelScope.async {
+                val startTime = System.currentTimeMillis()
+                try {
+                    val isWorking = withTimeoutOrNull(5000L) {
+                        source.ping()
+                    } ?: false
+
+                    val latency = System.currentTimeMillis() - startTime
+                    val health = SourceHealth(
+                        sourceId = source.id,
+                        isWorking = isWorking,
+                        latency = latency,
+                        status = when {
+                            !isWorking -> SourceStatus.BROKEN
+                            latency > 3000 -> SourceStatus.SLOW
+                            latency > 1500 -> SourceStatus.NORMAL
+                            else -> SourceStatus.FAST
+                        }
+                    )
+                    android.util.Log.d("HomeViewModel", "Source ${source.name}: ${health.status} (${latency}ms)")
+                    health
+                } catch (e: Exception) {
+                    android.util.Log.e("HomeViewModel", "Source ${source.name} health check failed", e)
+                    SourceHealth(source.id, false, Long.MAX_VALUE, SourceStatus.BROKEN)
+                }
+            }
+        }
+
+        // Wait for all health checks
+        val allHealthResults = (videoHealthTests + mangaHealthTests).awaitAll()
+        allHealthResults.forEach { health ->
+            sourceHealth[health.sourceId] = health
+        }
+
+        android.util.Log.d("HomeViewModel", "Source health testing complete. Working sources: ${sourceHealth.values.count { it.isWorking }}")
+    }
+
+    /**
+     * Get video sources sorted by health (working and fast sources first)
+     */
+    private fun getVideoSourcesSortedByHealth(): List<VideoSource> {
+        return sourceManager.getAllVideoSources().sortedWith(
+            compareBy(
+                // Working sources first
+                { sourceHealth[it.id]?.isWorking != true },
+                // Then by status (FAST < NORMAL < SLOW < BROKEN)
+                { sourceHealth[it.id]?.status?.ordinal ?: Int.MAX_VALUE },
+                // Then by latency
+                { sourceHealth[it.id]?.latency ?: Long.MAX_VALUE }
+            )
+        )
+    }
+
+    /**
+     * Get manga sources sorted by health
+     */
+    private fun getMangaSourcesSortedByHealth(): List<MangaSource> {
+        return sourceManager.getAllMangaSources().sortedWith(
+            compareBy(
+                { sourceHealth[it.id]?.isWorking != true },
+                { sourceHealth[it.id]?.status?.ordinal ?: Int.MAX_VALUE },
+                { sourceHealth[it.id]?.latency ?: Long.MAX_VALUE }
+            )
+        )
+    }
+
     private suspend fun loadMangaContent(): List<MangaSection> {
         val sections = mutableListOf<MangaSection>()
         val errors = mutableListOf<String>()
 
-        android.util.Log.d("HomeViewModel", "Loading manga from ${sourceManager.getAllMangaSources().size} sources")
+        // Get sources sorted by health (working/fast sources first)
+        val sortedSources = getMangaSourcesSortedByHealth()
+        android.util.Log.d("HomeViewModel", "Loading manga from ${sortedSources.size} sources (sorted by health)")
 
-        sourceManager.getAllMangaSources().forEach { source ->
-            android.util.Log.d("HomeViewModel", "Loading manga source: ${source.name}")
+        sortedSources.forEach { source ->
+            val health = sourceHealth[source.id]
+
+            // Skip broken sources entirely
+            if (health?.status == SourceStatus.BROKEN) {
+                android.util.Log.d("HomeViewModel", "Skipping broken source: ${source.name}")
+                return@forEach
+            }
+
+            android.util.Log.d("HomeViewModel", "Loading manga source: ${source.name} (${health?.status})")
             try {
-                val popular = source.getPopular(1).take(10)
+                // Use timeout for slow sources
+                val timeout = if (health?.status == SourceStatus.SLOW) 15000L else 10000L
+
+                val popular = withTimeoutOrNull(timeout) {
+                    source.getPopular(1).take(10)
+                } ?: emptyList()
+
                 android.util.Log.d("HomeViewModel", "${source.name} popular: ${popular.size} items")
                 if (popular.isNotEmpty()) {
                     sections.add(MangaSection(
                         title = "${source.name} - Popular",
                         items = popular,
-                        sourceId = source.id
+                        sourceId = source.id,
+                        sourceStatus = health?.status ?: SourceStatus.NORMAL
                     ))
                 }
 
-                val latest = source.getLatest(1).take(10)
+                val latest = withTimeoutOrNull(timeout) {
+                    source.getLatest(1).take(10)
+                } ?: emptyList()
+
                 android.util.Log.d("HomeViewModel", "${source.name} latest: ${latest.size} items")
                 if (latest.isNotEmpty()) {
                     sections.add(MangaSection(
                         title = "${source.name} - Latest",
                         items = latest,
-                        sourceId = source.id
+                        sourceId = source.id,
+                        sourceStatus = health?.status ?: SourceStatus.NORMAL
                     ))
                 }
             } catch (e: Exception) {
                 errors.add("${source.name}: ${e.message}")
                 android.util.Log.e("HomeViewModel", "Failed to load ${source.name}: ${e.message}", e)
+                // Mark source as broken for future reference
+                sourceHealth[source.id] = SourceHealth(source.id, false, Long.MAX_VALUE, SourceStatus.BROKEN)
             }
         }
 
@@ -103,24 +243,43 @@ class HomeViewModel @Inject constructor(
         val sections = mutableListOf<VideoSection>()
         val errors = mutableListOf<String>()
 
-        android.util.Log.d("HomeViewModel", "Loading video from ${sourceManager.getAllVideoSources().size} sources")
+        // Get sources sorted by health (working/fast sources first)
+        val sortedSources = getVideoSourcesSortedByHealth()
+        android.util.Log.d("HomeViewModel", "Loading video from ${sortedSources.size} sources (sorted by health)")
 
-        sourceManager.getAllVideoSources().forEach { source ->
-            android.util.Log.d("HomeViewModel", "Loading video source: ${source.name}")
+        sortedSources.forEach { source ->
+            val health = sourceHealth[source.id]
+
+            // Skip broken sources entirely
+            if (health?.status == SourceStatus.BROKEN) {
+                android.util.Log.d("HomeViewModel", "Skipping broken source: ${source.name}")
+                return@forEach
+            }
+
+            android.util.Log.d("HomeViewModel", "Loading video source: ${source.name} (${health?.status})")
             try {
-                val homeSections = source.getHomePage()
+                // Use timeout - shorter for slow sources to not block UI
+                val timeout = if (health?.status == SourceStatus.SLOW) 15000L else 10000L
+
+                val homeSections = withTimeoutOrNull(timeout) {
+                    source.getHomePage()
+                } ?: emptyList()
+
                 android.util.Log.d("HomeViewModel", "${source.name}: ${homeSections.size} sections loaded")
                 homeSections.forEach { section ->
                     android.util.Log.d("HomeViewModel", "${source.name} - ${section.name}: ${section.items.size} items")
                     sections.add(VideoSection(
                         title = "${source.name} - ${section.name}",
                         items = section.items.take(10),
-                        sourceId = source.id
+                        sourceId = source.id,
+                        sourceStatus = health?.status ?: SourceStatus.NORMAL
                     ))
                 }
             } catch (e: Exception) {
                 errors.add("${source.name}: ${e.message}")
                 android.util.Log.e("HomeViewModel", "Failed to load ${source.name}: ${e.message}", e)
+                // Mark source as broken for future reference
+                sourceHealth[source.id] = SourceHealth(source.id, false, Long.MAX_VALUE, SourceStatus.BROKEN)
             }
         }
 
@@ -132,9 +291,21 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refresh() {
+        // Clear cached health on refresh to re-test
+        sourceHealth.clear()
         loadHomeContent()
     }
 }
+
+/**
+ * Health status for a source
+ */
+data class SourceHealth(
+    val sourceId: String,
+    val isWorking: Boolean,
+    val latency: Long,
+    val status: SourceStatus
+)
 
 data class HomeUiState(
     val isLoading: Boolean = true,
@@ -146,11 +317,13 @@ data class HomeUiState(
 data class MangaSection(
     val title: String,
     val items: List<Manga>,
-    val sourceId: String
+    val sourceId: String,
+    val sourceStatus: SourceStatus = SourceStatus.NORMAL
 )
 
 data class VideoSection(
     val title: String,
     val items: List<Video>,
-    val sourceId: String
+    val sourceId: String,
+    val sourceStatus: SourceStatus = SourceStatus.NORMAL
 )

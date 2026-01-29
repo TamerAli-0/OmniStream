@@ -8,6 +8,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import okhttp3.brotli.BrotliInterceptor
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.util.concurrent.TimeUnit
@@ -26,7 +27,7 @@ class OmniHttpClient @Inject constructor() {
         const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
         // Default headers to avoid detection
-        // Note: Do NOT set Accept-Encoding - let OkHttp handle compression automatically
+        // Note: Do NOT set Accept-Encoding - let OkHttp + BrotliInterceptor handle compression
         val DEFAULT_HEADERS = mapOf(
             "User-Agent" to USER_AGENT,
             "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -45,6 +46,7 @@ class OmniHttpClient @Inject constructor() {
     }
 
     private val client: OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(BrotliInterceptor)  // Enable brotli decompression
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
