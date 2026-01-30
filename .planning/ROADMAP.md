@@ -20,6 +20,14 @@ OmniStream v2.0 fixes existing bugs, adds offline downloads, upgrades the player
 
 **Requirements:** BUG-01, BUG-02, BUG-03, PLAYER-01
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 08-01-PLAN.md -- Room migration v1->v2 + WatchHistory entities/DAOs/Repository + Hilt wiring
+- [ ] 08-02-PLAN.md -- Fix Library to read from Room (BUG-01) + Fix search race condition (BUG-02)
+- [ ] 08-03-PLAN.md -- Manga reading progress auto-save (BUG-03) + Video progress save/resume
+- [ ] 08-04-PLAN.md -- Continue Watching/Reading rows on Home screen (PLAYER-01)
+
 **Success Criteria:**
 1. User opens Library screen and sees locally favorited items from Room database (not just cloud sync)
 2. User types rapidly in search bar and results load cleanly without duplicates or stale data
@@ -138,7 +146,7 @@ OmniStream v2.0 fixes existing bugs, adds offline downloads, upgrades the player
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 8 | Foundation + Bug Fixes + Progress | BUG-01, BUG-02, BUG-03, PLAYER-01 | Not Started |
+| 8 | Foundation + Bug Fixes + Progress | BUG-01, BUG-02, BUG-03, PLAYER-01 | Planning Complete |
 | 9 | Download System | DL-01, DL-02, DL-03, DL-04 | Not Started |
 | 10 | Search Improvements | SEARCH-01, SEARCH-02, SEARCH-03 | Not Started |
 | 11 | Player Core Upgrades | PLAYER-02, PLAYER-03, PLAYER-04 | Not Started |
