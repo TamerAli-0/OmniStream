@@ -38,6 +38,8 @@ Executed 4 plans across 2 waves via GSD system.
 - `ui/navigation/OmniNavigation.kt` — Added title+coverUrl args to both reader and player routes
 - `ui/player/PlayerViewModel.kt` — Use videoTitle for display, not "Episode {number}"
 
+6. **Manga reader didn't resume at saved page** — `loadCurrentChapterPages` reset `currentPage` to 0 before saved progress check ran. Also `LazyColumn` never scrolled to restored page. Fixed: Added `restoredPage` state, `LaunchedEffect` scrolls to it, `DisposableEffect` saves on exit.
+
 ### Build Status: SUCCESSFUL
 
 ---
