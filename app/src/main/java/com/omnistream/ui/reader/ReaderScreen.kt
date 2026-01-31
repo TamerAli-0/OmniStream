@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -63,6 +64,20 @@ fun ReaderScreen(
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex }
             .collect { index -> viewModel.setCurrentPage(index) }
+    }
+
+    // Scroll to restored page when available
+    LaunchedEffect(uiState.restoredPage) {
+        uiState.restoredPage?.let { page ->
+            if (page > 0) {
+                listState.scrollToItem(page)
+            }
+        }
+    }
+
+    // Save progress when leaving the screen
+    DisposableEffect(Unit) {
+        onDispose { viewModel.saveOnExit() }
     }
 
     Box(

@@ -35,6 +35,7 @@ class ReaderViewModel @Inject constructor(
     private var chapterList: List<Chapter> = emptyList()
     private var currentChapterIndex: Int = -1
     private var autoSaveJob: Job? = null
+    private var pendingRestoredPage: Int? = null
 
     private val _uiState = MutableStateFlow(ReaderUiState())
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
@@ -83,7 +84,8 @@ class ReaderViewModel @Inject constructor(
                     val pages = _uiState.value.pages
                     val savedPage = savedProgress.progressPosition.toInt()
                         .coerceIn(0, (pages.size - 1).coerceAtLeast(0))
-                    _uiState.value = _uiState.value.copy(currentPage = savedPage)
+                    pendingRestoredPage = savedPage
+                    _uiState.value = _uiState.value.copy(currentPage = savedPage, restoredPage = savedPage)
                 }
 
             } catch (e: Exception) {
@@ -215,6 +217,11 @@ class ReaderViewModel @Inject constructor(
         )
     }
 
+    fun saveOnExit() {
+        // Called from DisposableEffect before ViewModel is cleared
+        viewModelScope.launch { saveCurrentProgress() }
+    }
+
     override fun onCleared() {
         super.onCleared()
         autoSaveJob?.cancel()
@@ -229,5 +236,6 @@ data class ReaderUiState(
     val chapterNumber: Float = 0f,
     val referer: String? = null,
     val hasPreviousChapter: Boolean = false,
-    val hasNextChapter: Boolean = false
+    val hasNextChapter: Boolean = false,
+    val restoredPage: Int? = null
 )
