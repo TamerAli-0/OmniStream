@@ -3,29 +3,38 @@ package com.omnistream.ui.reader
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.WatchHistoryEntity
+import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.domain.model.Chapter
 import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Page
 import com.omnistream.source.SourceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
     private val sourceManager: SourceManager,
+    private val watchHistoryRepository: WatchHistoryRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val sourceId: String = savedStateHandle["sourceId"] ?: ""
     private val mangaId: String = java.net.URLDecoder.decode(savedStateHandle["mangaId"] ?: "", "UTF-8")
     private var currentChapterId: String = java.net.URLDecoder.decode(savedStateHandle["chapterId"] ?: "", "UTF-8")
+    private val mangaTitle: String = savedStateHandle["title"] ?: ""
+    private val coverUrl: String? = savedStateHandle["coverUrl"]
 
     private var chapterList: List<Chapter> = emptyList()
     private var currentChapterIndex: Int = -1
+    private var autoSaveJob: Job? = null
 
     private val _uiState = MutableStateFlow(ReaderUiState())
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
@@ -68,6 +77,15 @@ class ReaderViewModel @Inject constructor(
 
                 loadCurrentChapterPages(source)
 
+                // After pages are loaded, check for saved progress to resume
+                val savedProgress = watchHistoryRepository.getProgress(mangaId, sourceId)
+                if (savedProgress != null && savedProgress.chapterId == currentChapterId) {
+                    val pages = _uiState.value.pages
+                    val savedPage = savedProgress.progressPosition.toInt()
+                        .coerceIn(0, (pages.size - 1).coerceAtLeast(0))
+                    _uiState.value = _uiState.value.copy(currentPage = savedPage)
+                }
+
             } catch (e: Exception) {
                 android.util.Log.e("ReaderViewModel", "Failed to load chapter", e)
                 _uiState.value = _uiState.value.copy(
@@ -107,10 +125,13 @@ class ReaderViewModel @Inject constructor(
             hasPreviousChapter = currentChapterIndex > 0,
             hasNextChapter = currentChapterIndex >= 0 && currentChapterIndex < chapterList.size - 1
         )
+
+        startAutoSave()
     }
 
     fun goToPreviousChapter() {
         if (currentChapterIndex <= 0) return
+        viewModelScope.launch { saveCurrentProgress() }
         currentChapterIndex--
         currentChapterId = chapterList[currentChapterIndex].id
         viewModelScope.launch {
@@ -130,6 +151,7 @@ class ReaderViewModel @Inject constructor(
 
     fun goToNextChapter() {
         if (currentChapterIndex < 0 || currentChapterIndex >= chapterList.size - 1) return
+        viewModelScope.launch { saveCurrentProgress() }
         currentChapterIndex++
         currentChapterId = chapterList[currentChapterIndex].id
         viewModelScope.launch {
@@ -153,6 +175,49 @@ class ReaderViewModel @Inject constructor(
 
     fun setCurrentPage(page: Int) {
         _uiState.value = _uiState.value.copy(currentPage = page)
+    }
+
+    private fun startAutoSave() {
+        autoSaveJob?.cancel()
+        autoSaveJob = viewModelScope.launch {
+            while (isActive) {
+                delay(12_000) // 12 seconds
+                saveCurrentProgress()
+            }
+        }
+    }
+
+    private suspend fun saveCurrentProgress() {
+        val state = _uiState.value
+        if (state.pages.isEmpty()) return
+        watchHistoryRepository.upsert(
+            WatchHistoryEntity(
+                id = "$sourceId:$mangaId",
+                contentId = mangaId,
+                sourceId = sourceId,
+                contentType = "manga",
+                title = mangaTitle,
+                coverUrl = coverUrl,
+                chapterId = currentChapterId,
+                chapterIndex = currentChapterIndex.coerceAtLeast(0),
+                totalChapters = chapterList.size,
+                progressPosition = state.currentPage.toLong(),
+                totalDuration = state.pages.size.toLong(),
+                progressPercentage = if (chapterList.isNotEmpty() && currentChapterIndex >= 0)
+                    (currentChapterIndex + 1).toFloat() / chapterList.size
+                else
+                    (state.currentPage + 1).toFloat() / state.pages.size.coerceAtLeast(1),
+                lastWatchedAt = System.currentTimeMillis(),
+                isCompleted = chapterList.isNotEmpty() &&
+                    currentChapterIndex == chapterList.size - 1 &&
+                    state.currentPage >= state.pages.size - 1
+            )
+        )
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        autoSaveJob?.cancel()
     }
 }
 
