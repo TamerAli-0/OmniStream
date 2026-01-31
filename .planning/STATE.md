@@ -10,15 +10,15 @@ See: .planning/PROJECT.md (updated 2026-01-29)
 ## Current Position
 
 Phase: 8 -- Foundation, Bug Fixes, and Progress Tracking
-Plan: --
-Status: Context gathered, ready to plan
-Progress: [..........] 0/5 phases
-Last activity: 2026-01-30 -- Phase 8 context gathered (discuss-phase)
+Plan: 02 of 4 (Bug Fixes: Library + Search)
+Status: In progress
+Progress: [##........] 1/4 plans in phase 8
+Last activity: 2026-01-31 -- Completed 08-02-PLAN.md (BUG-01 Library, BUG-02 Search)
 
 ## Performance Metrics
 
-Plans completed: 0
-Requirements delivered: 0/19
+Plans completed: 1
+Requirements delivered: 2/19
 Phases completed: 0/5
 
 ## Accumulated Context
@@ -32,12 +32,16 @@ Phases completed: 0/5
 - Distribution: Sideload only for v2.0 (Play Store incompatible with scraping architecture)
 - Single Room migration v1->v2 adds all three new tables (downloads, watch_history, search_history)
 - Zero new production dependencies needed for v2.0 features
+- Library shows flat favorites list (no categories -- FavoriteEntity has no category field)
+- Library Flow auto-updates from Room (no manual Refresh needed)
+- Search debounce 400ms with Flow pipeline (up from 300ms manual Job approach)
+- performSearch uses coroutineScope{} for structured concurrency in flatMapLatest
 
 ### Known Issues
-- Library screen only shows cloud sync data, not local Room favorites (BUG-01, Phase 8)
+- ~~Library screen only shows cloud sync data, not local Room favorites (BUG-01, Phase 8)~~ FIXED 08-02
 - No reading progress persistence (BUG-03, Phase 8)
 - GogoAnime details page crashes (deferred to Future, not in v2.0 scope)
-- Search race condition with rapid typing (BUG-02, Phase 8)
+- ~~Search race condition with rapid typing (BUG-02, Phase 8)~~ FIXED 08-02
 - No search timeout handling (SEARCH-02, Phase 10)
 - Downloads screen is placeholder (DL-01 through DL-04, Phase 9)
 
@@ -49,18 +53,20 @@ Phases completed: 0/5
 - Room DB v1 has only FavoriteEntity (no migrations yet)
 - Media3 ExoPlayer already has subtitle selection, speed controls, resize, PiP button wired up
 - Player features partially implemented -- Phase 11/12 complete what exists
+- Pattern: Room Flow collection in ViewModel init for reactive UI
+- Pattern: MutableStateFlow + debounce + distinctUntilChanged + flatMapLatest for search
 
 ### Todos
-- None yet (planning phase)
+- Execute 08-01 (Room migration), 08-03, 08-04
 
 ### Blockers
 - None
 
 ## Session Continuity
 
-Last session ended: 2026-01-30
-Next step: Run `/gsd:plan-phase 8` to create executable plan for Phase 8
-Key context for next session: Phase 8 context gathered. Key decisions: separate Continue Watching/Reading rows at top of Home, dual-write favorites (Room + cloud), auto-save manga progress every 10-15s, video progress saved on pause/exit, resume prompt for video, exact page resume for manga. See 08-CONTEXT.md for full decisions.
+Last session ended: 2026-01-31
+Next step: Execute next plan in Phase 8 (08-01 or 08-03 depending on dependencies)
+Key context for next session: BUG-01 and BUG-02 fixed. Library reads from Room FavoriteDao via Flow. Search uses debounce pipeline. Both compile cleanly. Next plans: 08-01 (Room migration), 08-03, 08-04.
 
 ---
-*Last updated: 2026-01-30*
+*Last updated: 2026-01-31*
