@@ -7,16 +7,21 @@ import com.omnistream.domain.model.Video
 import com.omnistream.source.SourceManager
 import com.omnistream.source.model.VideoType
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val sourceManager: SourceManager
@@ -25,85 +30,88 @@ class SearchViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
-    private var searchJob: Job? = null
+    private val _searchQuery = MutableStateFlow("")
 
-    fun search(query: String) {
-        if (query.isBlank()) {
-            _uiState.value = SearchUiState()
-            return
-        }
-
-        // Debounce search
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            delay(300) // Debounce 300ms
-            performSearch(query)
+    init {
+        viewModelScope.launch {
+            _searchQuery
+                .debounce(400)
+                .distinctUntilChanged()
+                .flatMapLatest { query ->
+                    if (query.isBlank()) {
+                        flowOf(SearchUiState())
+                    } else {
+                        flow {
+                            emit(_uiState.value.copy(isLoading = true, error = null, query = query))
+                            try {
+                                val results = performSearch(query)
+                                emit(SearchUiState(
+                                    isLoading = false,
+                                    results = results,
+                                    query = query,
+                                    error = if (results.isEmpty()) "No results found" else null,
+                                    selectedFilter = _uiState.value.selectedFilter
+                                ))
+                            } catch (e: Exception) {
+                                android.util.Log.e("SearchViewModel", "Search failed", e)
+                                emit(_uiState.value.copy(
+                                    isLoading = false,
+                                    error = e.message ?: "Search failed"
+                                ))
+                            }
+                        }
+                    }
+                }
+                .collect { state -> _uiState.value = state }
         }
     }
 
-    private suspend fun performSearch(query: String) {
-        _uiState.value = _uiState.value.copy(
-            isLoading = true,
-            error = null,
-            query = query
-        )
+    fun search(query: String) {
+        _searchQuery.value = query
+    }
 
-        try {
-            val videoSources = sourceManager.getAllVideoSources()
-            val mangaSources = sourceManager.getAllMangaSources()
+    private suspend fun performSearch(query: String): List<SearchResult> = coroutineScope {
+        val videoSources = sourceManager.getAllVideoSources()
+        val mangaSources = sourceManager.getAllMangaSources()
 
-            // Search all sources in parallel
-            val videoResults = videoSources.map { source ->
-                viewModelScope.async {
-                    try {
-                        source.search(query, 1).map { video ->
-                            SearchResult.VideoResult(video)
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("SearchViewModel", "Search failed for ${source.name}", e)
-                        emptyList()
+        // Search all sources in parallel
+        val videoResults = videoSources.map { source ->
+            async {
+                try {
+                    source.search(query, 1).map { video ->
+                        SearchResult.VideoResult(video)
                     }
+                } catch (e: Exception) {
+                    android.util.Log.e("SearchViewModel", "Search failed for ${source.name}", e)
+                    emptyList()
                 }
             }
-
-            val mangaResults = mangaSources.map { source ->
-                viewModelScope.async {
-                    try {
-                        source.search(query, 1).map { manga ->
-                            SearchResult.MangaResult(manga)
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("SearchViewModel", "Search failed for ${source.name}", e)
-                        emptyList()
-                    }
-                }
-            }
-
-            val allVideoResults = videoResults.awaitAll().flatten()
-            val allMangaResults = mangaResults.awaitAll().flatten()
-
-            // Combine and dedupe by title (keep first occurrence)
-            val allResults = (allVideoResults + allMangaResults)
-                .distinctBy { result ->
-                    when (result) {
-                        is SearchResult.VideoResult -> "${result.video.title}-${result.video.sourceId}"
-                        is SearchResult.MangaResult -> "${result.manga.title}-${result.manga.sourceId}"
-                    }
-                }
-
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                results = allResults,
-                error = if (allResults.isEmpty()) "No results found" else null
-            )
-
-        } catch (e: Exception) {
-            android.util.Log.e("SearchViewModel", "Search failed", e)
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                error = e.message ?: "Search failed"
-            )
         }
+
+        val mangaResults = mangaSources.map { source ->
+            async {
+                try {
+                    source.search(query, 1).map { manga ->
+                        SearchResult.MangaResult(manga)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("SearchViewModel", "Search failed for ${source.name}", e)
+                    emptyList()
+                }
+            }
+        }
+
+        val allVideoResults = videoResults.awaitAll().flatten()
+        val allMangaResults = mangaResults.awaitAll().flatten()
+
+        // Combine and dedupe by title (keep first occurrence)
+        (allVideoResults + allMangaResults)
+            .distinctBy { result ->
+                when (result) {
+                    is SearchResult.VideoResult -> "${result.video.title}-${result.video.sourceId}"
+                    is SearchResult.MangaResult -> "${result.manga.title}-${result.manga.sourceId}"
+                }
+            }
     }
 
     fun setFilter(filter: SearchFilter) {
