@@ -58,14 +58,14 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| BUG-01 | Phase 8 | Pending |
-| BUG-02 | Phase 8 | Pending |
-| BUG-03 | Phase 8 | Pending |
+| BUG-01 | Phase 8 | Complete |
+| BUG-02 | Phase 8 | Complete |
+| BUG-03 | Phase 8 | Complete |
 | DL-01 | Phase 9 | Pending |
 | DL-02 | Phase 9 | Pending |
 | DL-03 | Phase 9 | Pending |
 | DL-04 | Phase 9 | Pending |
-| PLAYER-01 | Phase 8 | Pending |
+| PLAYER-01 | Phase 8 | Complete |
 | PLAYER-02 | Phase 11 | Pending |
 | PLAYER-03 | Phase 11 | Pending |
 | PLAYER-04 | Phase 11 | Pending |
