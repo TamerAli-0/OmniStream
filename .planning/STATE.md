@@ -38,6 +38,9 @@ Phases completed: 1/5
 - performSearch uses coroutineScope{} for structured concurrency in flatMapLatest
 - WatchHistoryEntity uses "sourceId:contentId" composite string PK (matches FavoriteEntity pattern)
 - Unified watch_history table for video and manga (contentType discriminator, not separate tables)
+- Manga auto-save every 12s via coroutine timer; video saves on pause/exit only (no periodic)
+- Video resume dialog (AlertDialog) with "Resume from M:SS" / "Start Over" options
+- onCleared() cannot launch coroutines so 12s timer is safety net for manga progress
 - Continue rows placed at top of Home LazyColumn, before all source sections
 - Video continue cards: 16:9 aspect ratio with 3dp LinearProgressIndicator at thumbnail bottom
 - Manga continue cards: 0.7 portrait aspect ratio with percentage badge overlay
@@ -45,7 +48,7 @@ Phases completed: 1/5
 
 ### Known Issues
 - ~~Library screen only shows cloud sync data, not local Room favorites (BUG-01, Phase 8)~~ FIXED 08-02
-- ~~No reading progress persistence (BUG-03, Phase 8)~~ ADDRESSED 08-03/08-04
+- ~~No reading progress persistence (BUG-03, Phase 8)~~ FIXED 08-03 (manga auto-save 12s + video save-on-pause/exit)
 - GogoAnime details page crashes (deferred to Future, not in v2.0 scope)
 - ~~Search race condition with rapid typing (BUG-02, Phase 8)~~ FIXED 08-02
 - No search timeout handling (SEARCH-02, Phase 10)
@@ -66,6 +69,9 @@ Phases completed: 1/5
 - All new DAOs (WatchHistory, SearchHistory, Download) provided by Hilt via AppModule
 - HomeViewModel injects WatchHistoryRepository, collects continueWatching/continueReading Flows
 - HomeScreen has ContinueWatchingRow/ContinueReadingRow composables with progress indicators
+- ReaderViewModel injects WatchHistoryRepository, auto-saves every 12s, resumes page on init
+- PlayerViewModel injects WatchHistoryRepository, saves on pause/exit, loads saved position on init
+- PlayerScreen has AlertDialog resume prompt and saves in DisposableEffect onDispose before release
 
 ### Todos
 - Execute Phase 9 (Downloads)
@@ -77,7 +83,7 @@ Phases completed: 1/5
 
 Last session ended: 2026-01-31
 Next step: Execute Phase 9 (Downloads) or Phase 10 (Search improvements)
-Key context for next session: Phase 8 complete. Room v2 migration, bug fixes, progress tracking, and continue rows all done. HomeViewModel has WatchHistoryRepository injected. HomeScreen shows continue watching/reading rows at top. Ready for next phase.
+Key context for next session: Phase 8 fully complete. Room v2 migration, bug fixes, progress tracking (08-03), and continue rows (08-04) all done. ReaderViewModel auto-saves manga progress every 12s. PlayerViewModel saves video progress on pause/exit with resume dialog. HomeScreen shows continue watching/reading rows. Ready for next phase.
 
 ---
 *Last updated: 2026-01-31*
