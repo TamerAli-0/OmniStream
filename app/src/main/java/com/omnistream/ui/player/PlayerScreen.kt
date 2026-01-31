@@ -128,6 +128,13 @@ fun PlayerScreen(
         }
 
         onDispose {
+            // Save video progress before leaving
+            exoPlayer?.let { player ->
+                if (player.duration > 0) {
+                    viewModel.saveVideoProgress(player.currentPosition, player.duration)
+                }
+            }
+
             activity?.let { act ->
                 // Restore orientation
                 act.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -153,6 +160,38 @@ fun PlayerScreen(
         }
     }
 
+    // Resume dialog
+    if (uiState.showResumeDialog && uiState.savedPosition != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { viewModel.dismissResumeDialog() },
+            title = { androidx.compose.material3.Text("Resume Playback") },
+            text = {
+                val minutes = (uiState.savedPosition!! / 1000 / 60).toInt()
+                val seconds = (uiState.savedPosition!! / 1000 % 60).toInt()
+                androidx.compose.material3.Text("Resume from ${minutes}:${String.format("%02d", seconds)}?")
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    exoPlayer?.seekTo(uiState.savedPosition!!)
+                    viewModel.dismissResumeDialog()
+                }) { androidx.compose.material3.Text("Resume") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    viewModel.startFromBeginning()
+                }) { androidx.compose.material3.Text("Start Over") }
+            }
+        )
+    }
+
+    // Seek to saved position after user clicks Resume
+    LaunchedEffect(uiState.savedPosition, uiState.showResumeDialog, exoPlayer) {
+        val pos = uiState.savedPosition
+        if (pos != null && !uiState.showResumeDialog && exoPlayer != null) {
+            exoPlayer?.seekTo(pos)
+        }
+    }
+
     // Back handler
     BackHandler {
         if (isLocked) {
@@ -163,6 +202,11 @@ fun PlayerScreen(
             showSubtitleSheet = false
             showResizeSheet = false
         } else {
+            exoPlayer?.let { player ->
+                if (player.duration > 0) {
+                    viewModel.saveVideoProgress(player.currentPosition, player.duration)
+                }
+            }
             navController.popBackStack()
         }
     }
@@ -315,6 +359,7 @@ fun PlayerScreen(
                 exoPlayer?.let { player ->
                     if (player.isPlaying) {
                         player.pause()
+                        viewModel.saveVideoProgress(player.currentPosition, player.duration)
                     } else {
                         player.play()
                     }

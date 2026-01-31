@@ -3,6 +3,8 @@ package com.omnistream.ui.player
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.WatchHistoryEntity
+import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.domain.model.Episode
 import com.omnistream.domain.model.VideoLink
 import com.omnistream.source.SourceManager
@@ -17,18 +19,22 @@ import javax.inject.Inject
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val sourceManager: SourceManager,
+    private val watchHistoryRepository: WatchHistoryRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val sourceId: String = savedStateHandle["sourceId"] ?: ""
     private val videoId: String = java.net.URLDecoder.decode(savedStateHandle["videoId"] ?: "", "UTF-8")
     private val episodeId: String = java.net.URLDecoder.decode(savedStateHandle["episodeId"] ?: "", "UTF-8")
+    private val videoTitle: String = savedStateHandle["title"] ?: ""
+    private val coverUrl: String? = savedStateHandle["coverUrl"]
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
     init {
         loadVideoLinks()
+        loadSavedProgress()
     }
 
     private fun loadVideoLinks() {
@@ -93,6 +99,50 @@ class PlayerViewModel @Inject constructor(
     fun selectLink(link: VideoLink) {
         _uiState.value = _uiState.value.copy(selectedLink = link)
     }
+
+    private fun loadSavedProgress() {
+        viewModelScope.launch {
+            val saved = watchHistoryRepository.getProgress(videoId, sourceId)
+            if (saved != null && !saved.isCompleted && saved.progressPosition > 0) {
+                _uiState.value = _uiState.value.copy(
+                    savedPosition = saved.progressPosition,
+                    showResumeDialog = true
+                )
+            }
+        }
+    }
+
+    fun dismissResumeDialog() {
+        _uiState.value = _uiState.value.copy(showResumeDialog = false)
+    }
+
+    fun startFromBeginning() {
+        _uiState.value = _uiState.value.copy(showResumeDialog = false, savedPosition = null)
+    }
+
+    fun saveVideoProgress(positionMs: Long, durationMs: Long) {
+        if (durationMs <= 0) return
+        val percentage = positionMs.toFloat() / durationMs
+        val isCompleted = percentage > 0.90f
+        viewModelScope.launch {
+            watchHistoryRepository.upsert(
+                WatchHistoryEntity(
+                    id = "$sourceId:$videoId",
+                    contentId = videoId,
+                    sourceId = sourceId,
+                    contentType = "video",
+                    title = videoTitle.ifBlank { _uiState.value.episodeTitle ?: "Unknown" },
+                    coverUrl = coverUrl,
+                    episodeId = episodeId,
+                    progressPosition = positionMs,
+                    totalDuration = durationMs,
+                    progressPercentage = percentage,
+                    lastWatchedAt = System.currentTimeMillis(),
+                    isCompleted = isCompleted
+                )
+            )
+        }
+    }
 }
 
 data class PlayerUiState(
@@ -100,5 +150,7 @@ data class PlayerUiState(
     val error: String? = null,
     val links: List<VideoLink> = emptyList(),
     val selectedLink: VideoLink? = null,
-    val episodeTitle: String? = null
+    val episodeTitle: String? = null,
+    val savedPosition: Long? = null,
+    val showResumeDialog: Boolean = false
 )
