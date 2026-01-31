@@ -57,7 +57,11 @@ class VideoDownloadWorker @AssistedInject constructor(
             }
 
             // Promote to foreground with progress notification
-            setForeground(createForegroundInfo(downloadId, title, 0f))
+            try {
+                setForeground(createForegroundInfo(downloadId, title, 0f))
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not start foreground: ${e.message}")
+            }
 
             // Mark as downloading
             downloadDao.updateProgress(downloadId, 0f, "downloading")
@@ -132,7 +136,9 @@ class VideoDownloadWorker @AssistedInject constructor(
                             ) {
                                 setProgress(workDataOf("progress" to progress))
                                 downloadDao.updateProgress(downloadId, progress, "downloading")
-                                setForeground(createForegroundInfo(downloadId, title, progress))
+                                try {
+                                    setForeground(createForegroundInfo(downloadId, title, progress))
+                                } catch (_: Exception) { }
                                 lastNotificationUpdate = now
                             }
                         }
@@ -159,7 +165,7 @@ class VideoDownloadWorker @AssistedInject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Download failed for $downloadId", e)
             downloadDao.updateProgress(downloadId, 0f, "failed")
-            Result.retry()
+            Result.failure()
         }
     }
 

@@ -5,9 +5,11 @@ import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.DownloadDao
 import com.omnistream.data.local.DownloadEntity
 import com.omnistream.data.local.FavoriteDao
 import com.omnistream.data.local.FavoriteEntity
+import com.omnistream.data.local.WatchHistoryDao
 import com.omnistream.data.local.WatchHistoryEntity
 import com.omnistream.data.repository.DownloadRepository
 import com.omnistream.data.repository.WatchHistoryRepository
@@ -28,6 +30,8 @@ class MangaDetailViewModel @Inject constructor(
     private val favoriteDao: FavoriteDao,
     private val watchHistoryRepository: WatchHistoryRepository,
     private val downloadRepository: DownloadRepository,
+    private val downloadDao: DownloadDao,
+    private val watchHistoryDao: WatchHistoryDao,
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -42,13 +46,28 @@ class MangaDetailViewModel @Inject constructor(
         loadMangaDetails()
         observeFavoriteStatus()
         loadReadingProgress()
+        observeDownloadedChapters()
     }
 
     private fun loadReadingProgress() {
         viewModelScope.launch {
             val saved = watchHistoryRepository.getProgress(mangaId, sourceId)
             if (saved != null && !saved.isCompleted) {
-                _uiState.value = _uiState.value.copy(savedProgress = saved)
+                _uiState.value = _uiState.value.copy(
+                    savedProgress = saved,
+                    readUpToChapterNumber = saved.chapterIndex.toFloat()
+                )
+            }
+        }
+    }
+
+    private fun observeDownloadedChapters() {
+        viewModelScope.launch {
+            downloadDao.getAllDownloads().collect { downloads ->
+                val downloadedIds = downloads
+                    .filter { it.sourceId == sourceId && it.contentId == mangaId && it.contentType == "manga" }
+                    .associate { it.chapterId to it.status }
+                _uiState.value = _uiState.value.copy(downloadedChapters = downloadedIds)
             }
         }
     }
@@ -153,10 +172,15 @@ class MangaDetailViewModel @Inject constructor(
 
     // --- Download methods ---
 
+    private fun sanitizeForPath(input: String): String {
+        return input.replace(Regex("[^a-zA-Z0-9._-]"), "_").take(120)
+    }
+
     fun downloadChapter(chapter: Chapter) {
         val manga = _uiState.value.manga ?: return
-        val downloadId = "manga_${sourceId}_${mangaId}_${chapter.id}"
-        val filePath = "${context.filesDir}/downloads/manga/$sourceId/$mangaId/${chapter.id}"
+        val safeChapterId = sanitizeForPath(chapter.id)
+        val downloadId = "manga_${sourceId}_${sanitizeForPath(mangaId)}_$safeChapterId"
+        val filePath = "${context.filesDir}/downloads/manga/$sourceId/${sanitizeForPath(mangaId)}/$safeChapterId"
 
         val entity = DownloadEntity(
             id = downloadId,
@@ -175,8 +199,13 @@ class MangaDetailViewModel @Inject constructor(
         )
 
         viewModelScope.launch {
-            downloadRepository.enqueueDownload(entity)
-            Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
+            try {
+                downloadRepository.enqueueDownload(entity)
+                Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                android.util.Log.e("MangaDetailViewModel", "Failed to enqueue download", e)
+                Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -220,6 +249,8 @@ data class MangaDetailUiState(
     val isFavorite: Boolean = false,
     val chaptersAscending: Boolean = true,
     val savedProgress: WatchHistoryEntity? = null,
+    val readUpToChapterNumber: Float = -1f,
+    val downloadedChapters: Map<String?, String> = emptyMap(),
     val selectedChapters: Set<String> = emptySet(),
     val isSelectionMode: Boolean = false,
     val downloadingChapterIds: Set<String> = emptySet()

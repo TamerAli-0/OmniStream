@@ -1,5 +1,6 @@
 package com.omnistream.ui.detail
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -144,9 +145,12 @@ fun VideoDetailScreen(
             }
 
             uiState.video != null -> {
+                Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 16.dp)
+                    contentPadding = PaddingValues(
+                        bottom = if (uiState.isSelectionMode && uiState.selectedEpisodes.isNotEmpty()) 80.dp else 16.dp
+                    )
                 ) {
                     // Hero section with backdrop and poster
                     item {
@@ -406,26 +410,6 @@ fun VideoDetailScreen(
 
                     // Episodes section (for TV shows/anime)
                     if (uiState.episodes.size > 1) {
-                        // Batch download button in selection mode
-                        if (uiState.isSelectionMode && uiState.selectedEpisodes.isNotEmpty()) {
-                            item {
-                                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-                                    Button(
-                                        onClick = { viewModel.downloadSelectedEpisodes() },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        shape = RoundedCornerShape(8.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.tertiary
-                                        )
-                                    ) {
-                                        Icon(Icons.Default.Download, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Download Selected (${uiState.selectedEpisodes.size})")
-                                    }
-                                }
-                            }
-                        }
-
                         item {
                             Column(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -470,6 +454,34 @@ fun VideoDetailScreen(
                         }
                     }
                 }
+
+                    // Floating batch download button
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = uiState.isSelectionMode && uiState.selectedEpisodes.isNotEmpty(),
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    ) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shadowElevation = 8.dp,
+                            color = MaterialTheme.colorScheme.surface
+                        ) {
+                            Button(
+                                onClick = { viewModel.downloadSelectedEpisodes() },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiary
+                                )
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Download Selected (${uiState.selectedEpisodes.size})")
+                            }
+                        }
+                    }
+                } // Box
             }
         }
     }

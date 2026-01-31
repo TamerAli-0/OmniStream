@@ -152,10 +152,15 @@ class VideoDetailViewModel @Inject constructor(
 
     // --- Download methods ---
 
+    private fun sanitizeForPath(input: String): String {
+        return input.replace(Regex("[^a-zA-Z0-9._-]"), "_").take(120)
+    }
+
     fun downloadEpisode(episode: Episode) {
         val video = _uiState.value.video ?: return
-        val downloadId = "video_${sourceId}_${videoId}_${episode.id}"
-        val filePath = "${context.filesDir}/downloads/video/$sourceId/$videoId/${episode.id}.mp4"
+        val safeEpisodeId = sanitizeForPath(episode.id)
+        val downloadId = "video_${sourceId}_${sanitizeForPath(videoId)}_$safeEpisodeId"
+        val filePath = "${context.filesDir}/downloads/video/$sourceId/${sanitizeForPath(videoId)}/$safeEpisodeId.mp4"
 
         val entity = DownloadEntity(
             id = downloadId,
@@ -174,8 +179,13 @@ class VideoDetailViewModel @Inject constructor(
         )
 
         viewModelScope.launch {
-            downloadRepository.enqueueDownload(entity)
-            Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
+            try {
+                downloadRepository.enqueueDownload(entity)
+                Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                android.util.Log.e("VideoDetailViewModel", "Failed to enqueue download", e)
+                Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

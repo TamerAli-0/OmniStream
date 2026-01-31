@@ -42,7 +42,11 @@ class MangaDownloadWorker @AssistedInject constructor(
 
         return try {
             // Promote to foreground with progress notification
-            setForeground(createForegroundInfo(downloadId, title, 0f))
+            try {
+                setForeground(createForegroundInfo(downloadId, title, 0f))
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not start foreground: ${e.message}")
+            }
 
             // Mark as downloading
             downloadDao.updateProgress(downloadId, 0f, "downloading")
@@ -129,7 +133,9 @@ class MangaDownloadWorker @AssistedInject constructor(
 
                 // Rate-limit notification updates: every 3 pages or on the last page
                 if (index % 3 == 0 || index == pages.size - 1) {
-                    setForeground(createForegroundInfo(downloadId, title, progress))
+                    try {
+                        setForeground(createForegroundInfo(downloadId, title, progress))
+                    } catch (_: Exception) { }
                 }
             }
 
@@ -156,7 +162,7 @@ class MangaDownloadWorker @AssistedInject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Download failed for $downloadId", e)
             downloadDao.updateProgress(downloadId, 0f, "failed")
-            Result.retry()
+            Result.failure()
         }
     }
 

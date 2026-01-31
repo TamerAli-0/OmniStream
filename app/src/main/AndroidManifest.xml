@@ -56,11 +56,11 @@
             android:supportsPictureInPicture="true"
             android:launchMode="singleTop" />
 
-        <!-- Download Service -->
+        <!-- WorkManager foreground service needs dataSync type for download workers -->
         <service
-            android:name=".service.DownloadService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
 
         <!-- WorkManager Initialization -->
         <provider
