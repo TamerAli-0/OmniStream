@@ -12,6 +12,7 @@ import com.omnistream.data.local.WatchHistoryDao
 import com.omnistream.data.remote.ApiService
 import com.omnistream.data.repository.AuthRepository
 import com.omnistream.data.repository.SyncRepository
+import com.omnistream.data.repository.DownloadRepository
 import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.source.SourceManager
 import dagger.Module
@@ -108,5 +109,14 @@ object AppModule {
     @Singleton
     fun provideWatchHistoryRepository(watchHistoryDao: WatchHistoryDao): WatchHistoryRepository {
         return WatchHistoryRepository(watchHistoryDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDownloadRepository(
+        downloadDao: DownloadDao,
+        @ApplicationContext context: Context
+    ): DownloadRepository {
+        return DownloadRepository(downloadDao, context)
     }
 }
