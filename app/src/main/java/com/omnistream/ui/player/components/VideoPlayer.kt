@@ -24,6 +24,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
@@ -219,71 +220,82 @@ fun VideoPlayer(
     // Load media when link changes
     DisposableEffect(link) {
         link?.let {
-            // Build headers map for debugging
-            val requestHeaders = buildMap {
-                put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                link.referer?.let { put("Referer", it) }
-                link.headers.forEach { (k, v) -> put(k, v) }
-            }
-            android.util.Log.d("VideoPlayer", "Loading URL: ${link.url}")
-            android.util.Log.d("VideoPlayer", "Request headers: $requestHeaders")
-
-            val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-                .setDefaultRequestProperties(requestHeaders)
-                .setAllowCrossProtocolRedirects(true)
+            val isLocalFile = link.url.startsWith("file://")
+            android.util.Log.d("VideoPlayer", "Loading URL: ${link.url} (offline=$isLocalFile)")
 
             val mediaItem = MediaItem.Builder()
                 .setUri(link.url)
                 .build()
 
-            // Create the video media source
-            val videoSource = if (link.isM3u8 || link.url.contains(".m3u8")) {
-                HlsMediaSource.Factory(httpDataSourceFactory)
+            if (isLocalFile) {
+                // Offline playback: use DefaultDataSource which handles file:// URIs
+                val localDataSourceFactory = DefaultDataSource.Factory(context)
+                val videoSource = ProgressiveMediaSource.Factory(localDataSourceFactory)
                     .createMediaSource(mediaItem)
+                exoPlayer.setMediaSource(videoSource)
+                android.util.Log.d("VideoPlayer", "Set local file media source")
             } else {
-                ProgressiveMediaSource.Factory(httpDataSourceFactory)
-                    .createMediaSource(mediaItem)
-            }
+                // Online playback: use HTTP data source with headers
+                val requestHeaders = buildMap {
+                    put("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    link.referer?.let { put("Referer", it) }
+                    link.headers.forEach { (k, v) -> put(k, v) }
+                }
+                android.util.Log.d("VideoPlayer", "Request headers: $requestHeaders")
 
-            // Create subtitle sources and merge them with the video source
-            if (link.subtitles.isNotEmpty()) {
-                android.util.Log.d("VideoPlayer", "Creating ${link.subtitles.size} subtitle media sources")
-                val subtitleSources = link.subtitles.mapIndexed { index, subtitle ->
-                    val mimeType = when {
-                        subtitle.url.contains(".vtt", ignoreCase = true) -> "text/vtt"
-                        subtitle.url.contains(".srt", ignoreCase = true) -> "application/x-subrip"
-                        subtitle.url.contains(".ass", ignoreCase = true) || subtitle.url.contains(".ssa", ignoreCase = true) -> "text/x-ssa"
-                        else -> "text/vtt"
-                    }
-                    if (index < 5) { // Only log first 5 to avoid spam
-                        android.util.Log.d("VideoPlayer", "Subtitle [$index]: ${subtitle.label ?: subtitle.language} ($mimeType)")
-                    }
-                    val subtitleConfig = MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(subtitle.url))
-                        .setMimeType(mimeType)
-                        .setLanguage(subtitle.language)
-                        .setLabel(subtitle.label ?: subtitle.language)
-                        .setSelectionFlags(0) // Don't auto-select any subtitle
-                        .build()
-                    SingleSampleMediaSource.Factory(httpDataSourceFactory)
-                        .createMediaSource(subtitleConfig, C.TIME_UNSET)
+                val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+                    .setDefaultRequestProperties(requestHeaders)
+                    .setAllowCrossProtocolRedirects(true)
+
+                // Create the video media source
+                val videoSource = if (link.isM3u8 || link.url.contains(".m3u8")) {
+                    HlsMediaSource.Factory(httpDataSourceFactory)
+                        .createMediaSource(mediaItem)
+                } else {
+                    ProgressiveMediaSource.Factory(httpDataSourceFactory)
+                        .createMediaSource(mediaItem)
                 }
 
-                // Merge video + all subtitle sources
-                val mergedSource = MergingMediaSource(
-                    videoSource,
-                    *subtitleSources.toTypedArray()
-                )
-                exoPlayer.setMediaSource(mergedSource)
-                android.util.Log.d("VideoPlayer", "Set merged media source with ${subtitleSources.size} subtitle tracks")
-            } else {
-                exoPlayer.setMediaSource(videoSource)
-            }
+                // Create subtitle sources and merge them with the video source
+                if (link.subtitles.isNotEmpty()) {
+                    android.util.Log.d("VideoPlayer", "Creating ${link.subtitles.size} subtitle media sources")
+                    val subtitleSources = link.subtitles.mapIndexed { index, subtitle ->
+                        val mimeType = when {
+                            subtitle.url.contains(".vtt", ignoreCase = true) -> "text/vtt"
+                            subtitle.url.contains(".srt", ignoreCase = true) -> "application/x-subrip"
+                            subtitle.url.contains(".ass", ignoreCase = true) || subtitle.url.contains(".ssa", ignoreCase = true) -> "text/x-ssa"
+                            else -> "text/vtt"
+                        }
+                        if (index < 5) { // Only log first 5 to avoid spam
+                            android.util.Log.d("VideoPlayer", "Subtitle [$index]: ${subtitle.label ?: subtitle.language} ($mimeType)")
+                        }
+                        val subtitleConfig = MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(subtitle.url))
+                            .setMimeType(mimeType)
+                            .setLanguage(subtitle.language)
+                            .setLabel(subtitle.label ?: subtitle.language)
+                            .setSelectionFlags(0) // Don't auto-select any subtitle
+                            .build()
+                        SingleSampleMediaSource.Factory(httpDataSourceFactory)
+                            .createMediaSource(subtitleConfig, C.TIME_UNSET)
+                    }
 
-            // Disable text tracks by default (user must select manually)
-            trackSelector.setParameters(
-                trackSelector.buildUponParameters()
-                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-            )
+                    // Merge video + all subtitle sources
+                    val mergedSource = MergingMediaSource(
+                        videoSource,
+                        *subtitleSources.toTypedArray()
+                    )
+                    exoPlayer.setMediaSource(mergedSource)
+                    android.util.Log.d("VideoPlayer", "Set merged media source with ${subtitleSources.size} subtitle tracks")
+                } else {
+                    exoPlayer.setMediaSource(videoSource)
+                }
+
+                // Disable text tracks by default (user must select manually)
+                trackSelector.setParameters(
+                    trackSelector.buildUponParameters()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                )
+            }
 
             exoPlayer.prepare()
         }

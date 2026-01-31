@@ -1,8 +1,11 @@
 package com.omnistream.ui.reader
 
+import android.content.Context
+import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.DownloadDao
 import com.omnistream.data.local.WatchHistoryEntity
 import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.domain.model.Chapter
@@ -10,6 +13,7 @@ import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Page
 import com.omnistream.source.SourceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,12 +21,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val watchHistoryRepository: WatchHistoryRepository,
+    private val downloadDao: DownloadDao,
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -99,6 +106,38 @@ class ReaderViewModel @Inject constructor(
     }
 
     private suspend fun loadCurrentChapterPages(source: com.omnistream.source.model.MangaSource) {
+        // Check if chapter is downloaded for offline reading
+        val downloadId = "manga_${sourceId}_${mangaId}_${currentChapterId}"
+        val downloadEntity = downloadDao.getById(downloadId)
+
+        if (downloadEntity != null && downloadEntity.status == "completed") {
+            val downloadDir = File(context.filesDir, "downloads/manga/$sourceId/$mangaId/$currentChapterId")
+            val localFiles = downloadDir.listFiles()
+                ?.filter { it.isFile && it.extension in listOf("jpg", "png", "webp") }
+                ?.sortedBy { it.name }
+
+            if (!localFiles.isNullOrEmpty()) {
+                val localPages = localFiles.mapIndexed { index, file ->
+                    Page(index = index, imageUrl = file.toUri().toString())
+                }
+                android.util.Log.d("ReaderViewModel", "Loaded ${localPages.size} offline pages from $downloadDir")
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    pages = localPages,
+                    currentPage = 0,
+                    chapterNumber = extractChapterNumber(currentChapterId),
+                    referer = null,
+                    isOffline = true,
+                    hasPreviousChapter = currentChapterIndex > 0,
+                    hasNextChapter = currentChapterIndex >= 0 && currentChapterIndex < chapterList.size - 1
+                )
+
+                startAutoSave()
+                return
+            }
+        }
+
         // Construct chapter URL based on source type
         val chapterUrl = when (sourceId) {
             "mangadex" -> "${source.baseUrl}/chapter/$currentChapterId"
@@ -116,7 +155,7 @@ class ReaderViewModel @Inject constructor(
         )
 
         val pages = source.getPages(chapter)
-        android.util.Log.d("ReaderViewModel", "Loaded ${pages.size} pages")
+        android.util.Log.d("ReaderViewModel", "Loaded ${pages.size} pages from network")
 
         _uiState.value = _uiState.value.copy(
             isLoading = false,
@@ -124,6 +163,7 @@ class ReaderViewModel @Inject constructor(
             currentPage = 0,
             chapterNumber = chapter.number,
             referer = source.baseUrl,
+            isOffline = false,
             hasPreviousChapter = currentChapterIndex > 0,
             hasNextChapter = currentChapterIndex >= 0 && currentChapterIndex < chapterList.size - 1
         )
@@ -235,6 +275,7 @@ data class ReaderUiState(
     val currentPage: Int = 0,
     val chapterNumber: Float = 0f,
     val referer: String? = null,
+    val isOffline: Boolean = false,
     val hasPreviousChapter: Boolean = false,
     val hasNextChapter: Boolean = false,
     val restoredPage: Int? = null

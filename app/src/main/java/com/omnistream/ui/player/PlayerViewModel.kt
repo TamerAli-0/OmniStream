@@ -1,8 +1,10 @@
 package com.omnistream.ui.player
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.DownloadDao
 import com.omnistream.data.local.WatchHistoryEntity
 import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.domain.model.Episode
@@ -10,16 +12,20 @@ import com.omnistream.domain.model.VideoLink
 import com.omnistream.source.SourceManager
 import com.omnistream.source.model.VideoType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val watchHistoryRepository: WatchHistoryRepository,
+    private val downloadDao: DownloadDao,
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -43,6 +49,33 @@ class PlayerViewModel @Inject constructor(
             android.util.Log.d("PlayerViewModel", "Loading video links: sourceId=$sourceId, videoId=$videoId, episodeId=$episodeId")
 
             try {
+                // Check if episode is downloaded for offline playback
+                val downloadId = "video_${sourceId}_${videoId}_${episodeId}"
+                val downloadEntity = downloadDao.getById(downloadId)
+
+                if (downloadEntity != null && downloadEntity.status == "completed") {
+                    val localFile = File(downloadEntity.filePath)
+                    if (localFile.exists()) {
+                        val localLink = VideoLink(
+                            url = "file://${downloadEntity.filePath}",
+                            quality = "Downloaded",
+                            extractorName = "offline",
+                            isM3u8 = false,
+                            isDash = false
+                        )
+                        android.util.Log.d("PlayerViewModel", "Using offline video: ${localFile.absolutePath}")
+
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            links = listOf(localLink),
+                            episodeTitle = videoTitle.ifBlank { "Episode" },
+                            selectedLink = localLink,
+                            isOffline = true
+                        )
+                        return@launch
+                    }
+                }
+
                 val source = sourceManager.getVideoSource(sourceId)
                     ?: throw Exception("Source not found: $sourceId")
 
@@ -151,6 +184,7 @@ data class PlayerUiState(
     val links: List<VideoLink> = emptyList(),
     val selectedLink: VideoLink? = null,
     val episodeTitle: String? = null,
+    val isOffline: Boolean = false,
     val savedPosition: Long? = null,
     val showResumeDialog: Boolean = false
 )
