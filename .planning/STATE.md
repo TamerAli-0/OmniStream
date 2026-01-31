@@ -10,14 +10,14 @@ See: .planning/PROJECT.md (updated 2026-01-29)
 ## Current Position
 
 Phase: 8 -- Foundation, Bug Fixes, and Progress Tracking
-Plan: 02 of 4 (Bug Fixes: Library + Search)
+Plan: 01 of 4 (Room Migration v1->v2)
 Status: In progress
-Progress: [##........] 1/4 plans in phase 8
-Last activity: 2026-01-31 -- Completed 08-02-PLAN.md (BUG-01 Library, BUG-02 Search)
+Progress: [####......] 2/4 plans in phase 8
+Last activity: 2026-01-31 -- Completed 08-01-PLAN.md (Room migration, entities, DAOs, repository, Hilt)
 
 ## Performance Metrics
 
-Plans completed: 1
+Plans completed: 2
 Requirements delivered: 2/19
 Phases completed: 0/5
 
@@ -36,6 +36,8 @@ Phases completed: 0/5
 - Library Flow auto-updates from Room (no manual Refresh needed)
 - Search debounce 400ms with Flow pipeline (up from 300ms manual Job approach)
 - performSearch uses coroutineScope{} for structured concurrency in flatMapLatest
+- WatchHistoryEntity uses "sourceId:contentId" composite string PK (matches FavoriteEntity pattern)
+- Unified watch_history table for video and manga (contentType discriminator, not separate tables)
 
 ### Known Issues
 - ~~Library screen only shows cloud sync data, not local Room favorites (BUG-01, Phase 8)~~ FIXED 08-02
@@ -50,14 +52,16 @@ Phases completed: 0/5
 - MongoDB Atlas: cluster0.gyrtw6w.mongodb.net
 - Test device: Infinix Note 30
 - Codebase: 67 Kotlin files, MVVM + Clean Architecture, Hilt DI
-- Room DB v1 has only FavoriteEntity (no migrations yet)
+- Room DB v2 with MIGRATION_1_2: adds watch_history, search_history, downloads tables
 - Media3 ExoPlayer already has subtitle selection, speed controls, resize, PiP button wired up
 - Player features partially implemented -- Phase 11/12 complete what exists
 - Pattern: Room Flow collection in ViewModel init for reactive UI
 - Pattern: MutableStateFlow + debounce + distinctUntilChanged + flatMapLatest for search
+- WatchHistoryRepository injectable via Hilt, wraps WatchHistoryDao
+- All new DAOs (WatchHistory, SearchHistory, Download) provided by Hilt via AppModule
 
 ### Todos
-- Execute 08-01 (Room migration), 08-03, 08-04
+- Execute 08-03, 08-04
 
 ### Blockers
 - None
@@ -65,8 +69,8 @@ Phases completed: 0/5
 ## Session Continuity
 
 Last session ended: 2026-01-31
-Next step: Execute next plan in Phase 8 (08-01 or 08-03 depending on dependencies)
-Key context for next session: BUG-01 and BUG-02 fixed. Library reads from Room FavoriteDao via Flow. Search uses debounce pipeline. Both compile cleanly. Next plans: 08-01 (Room migration), 08-03, 08-04.
+Next step: Execute 08-03 (progress tracking implementation using WatchHistoryRepository)
+Key context for next session: Room v2 migration complete. WatchHistoryEntity/Dao/Repository, SearchHistoryEntity/Dao, DownloadEntity/Dao all exist and compile. Hilt wiring done in AppModule. Ready for 08-03 (progress tracking) and 08-04.
 
 ---
 *Last updated: 2026-01-31*
