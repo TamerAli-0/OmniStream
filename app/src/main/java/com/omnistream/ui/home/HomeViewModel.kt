@@ -2,6 +2,8 @@ package com.omnistream.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.WatchHistoryEntity
+import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Video
 import com.omnistream.source.SourceManager
@@ -20,7 +22,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val sourceManager: SourceManager
+    private val sourceManager: SourceManager,
+    private val watchHistoryRepository: WatchHistoryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -30,7 +33,24 @@ class HomeViewModel @Inject constructor(
     private val sourceHealth = mutableMapOf<String, SourceHealth>()
 
     init {
+        // Observe continue rows (reactive, auto-updates when progress changes)
+        viewModelScope.launch {
+            watchHistoryRepository.getContinueWatching().collect { items ->
+                _uiState.value = _uiState.value.copy(continueWatching = items)
+            }
+        }
+        viewModelScope.launch {
+            watchHistoryRepository.getContinueReading().collect { items ->
+                _uiState.value = _uiState.value.copy(continueReading = items)
+            }
+        }
         loadHomeContent()
+    }
+
+    fun deleteFromHistory(id: String) {
+        viewModelScope.launch {
+            watchHistoryRepository.delete(id)
+        }
     }
 
     fun loadHomeContent() {
@@ -311,7 +331,9 @@ data class HomeUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val mangaSections: List<MangaSection> = emptyList(),
-    val videoSections: List<VideoSection> = emptyList()
+    val videoSections: List<VideoSection> = emptyList(),
+    val continueWatching: List<WatchHistoryEntity> = emptyList(),
+    val continueReading: List<WatchHistoryEntity> = emptyList()
 )
 
 data class MangaSection(
