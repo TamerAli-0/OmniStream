@@ -106,36 +106,44 @@ class ReaderViewModel @Inject constructor(
     }
 
     private suspend fun loadCurrentChapterPages(source: com.omnistream.source.model.MangaSource) {
-        // Check if chapter is downloaded for offline reading
-        val downloadId = "manga_${sourceId}_${mangaId}_${currentChapterId}"
-        val downloadEntity = downloadDao.getById(downloadId)
+        // Check if chapter is downloaded for offline reading (query by fields, not reconstructed ID)
+        val downloadEntity = downloadDao.getByChapter(sourceId, mangaId, currentChapterId)
 
         if (downloadEntity != null && downloadEntity.status == "completed") {
-            val downloadDir = File(context.filesDir, "downloads/manga/$sourceId/$mangaId/$currentChapterId")
-            val localFiles = downloadDir.listFiles()
-                ?.filter { it.isFile && it.extension in listOf("jpg", "png", "webp") }
-                ?.sortedBy { it.name }
+            // Use the filePath from the entity directly (it was set during download enqueue)
+            val downloadDir = File(downloadEntity.filePath)
+            android.util.Log.d("ReaderViewModel", "Checking offline dir: ${downloadDir.absolutePath} exists=${downloadDir.exists()}")
 
-            if (!localFiles.isNullOrEmpty()) {
-                val localPages = localFiles.mapIndexed { index, file ->
-                    Page(index = index, imageUrl = file.toUri().toString())
+            if (downloadDir.exists()) {
+                val localFiles = downloadDir.listFiles()
+                    ?.filter { it.isFile && it.extension.lowercase() in listOf("jpg", "png", "webp", "gif", "jpeg") }
+                    ?.sortedBy { it.name }
+
+                android.util.Log.d("ReaderViewModel", "Found ${localFiles?.size ?: 0} local files")
+
+                if (!localFiles.isNullOrEmpty()) {
+                    val localPages = localFiles.mapIndexed { index, file ->
+                        Page(index = index, imageUrl = file.toUri().toString())
+                    }
+                    android.util.Log.d("ReaderViewModel", "Loaded ${localPages.size} offline pages")
+
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        pages = localPages,
+                        currentPage = 0,
+                        chapterNumber = extractChapterNumber(currentChapterId),
+                        referer = null,
+                        isOffline = true,
+                        hasPreviousChapter = currentChapterIndex > 0,
+                        hasNextChapter = currentChapterIndex >= 0 && currentChapterIndex < chapterList.size - 1
+                    )
+
+                    startAutoSave()
+                    return
                 }
-                android.util.Log.d("ReaderViewModel", "Loaded ${localPages.size} offline pages from $downloadDir")
-
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    pages = localPages,
-                    currentPage = 0,
-                    chapterNumber = extractChapterNumber(currentChapterId),
-                    referer = null,
-                    isOffline = true,
-                    hasPreviousChapter = currentChapterIndex > 0,
-                    hasNextChapter = currentChapterIndex >= 0 && currentChapterIndex < chapterList.size - 1
-                )
-
-                startAutoSave()
-                return
             }
+            // If local files not found, fall through to network loading
+            android.util.Log.w("ReaderViewModel", "Download marked complete but files not found at ${downloadDir.absolutePath}, falling back to network")
         }
 
         // Construct chapter URL based on source type

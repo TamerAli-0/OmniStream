@@ -122,7 +122,7 @@ fun ReaderScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(uiState.pages) { page ->
-                        PageImage(page = page, baseUrl = uiState.referer)
+                        PageImage(page = page, baseUrl = uiState.referer, isOffline = uiState.isOffline)
                     }
                 }
             }
@@ -133,7 +133,7 @@ fun ReaderScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Chapter ${uiState.chapterNumber}",
+                        "Chapter ${if (uiState.chapterNumber % 1f == 0f) uiState.chapterNumber.toInt() else uiState.chapterNumber}",
                         color = Color.White
                     )
                 },
@@ -197,7 +197,8 @@ fun ReaderScreen(
 @Composable
 private fun PageImage(
     page: Page,
-    baseUrl: String?
+    baseUrl: String?,
+    isOffline: Boolean = false
 ) {
     val context = LocalContext.current
 
@@ -207,6 +208,7 @@ private fun PageImage(
         .addHeader("Referer", page.referer ?: baseUrl ?: "")
         .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
         .crossfade(true)
+        .allowHardware(!isOffline) // Disable hardware bitmaps for local files (MediaTek compat)
         .build()
 
     SubcomposeAsyncImage(

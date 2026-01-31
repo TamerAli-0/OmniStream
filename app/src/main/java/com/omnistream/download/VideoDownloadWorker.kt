@@ -70,80 +70,13 @@ class VideoDownloadWorker @AssistedInject constructor(
             val outputFile = File(filePath)
             outputFile.parentFile?.mkdirs()
 
-            // Resume support: check existing file size for HTTP Range header
-            val existingSize = if (outputFile.exists()) outputFile.length() else 0L
-            val headers = mutableMapOf<String, String>()
-            if (existingSize > 0) {
-                headers["Range"] = "bytes=$existingSize-"
-                Log.d(TAG, "Resuming download from byte $existingSize")
-            }
+            val isHls = videoUrl.contains(".m3u8", ignoreCase = true)
+            Log.d(TAG, "Downloading video: isHls=$isHls, url=${videoUrl.take(100)}...")
 
-            // Download the video file
-            val response = httpClient.getRaw(videoUrl, headers = headers, referer = referer.ifBlank { null })
-            response.use { resp ->
-                if (!resp.isSuccessful && resp.code != 206) {
-                    Log.e(TAG, "Failed to download video: HTTP ${resp.code}")
-                    downloadDao.updateProgress(downloadId, 0f, "failed")
-                    return Result.failure()
-                }
-
-                val contentLength = resp.body?.contentLength() ?: -1L
-                val totalSize = if (contentLength > 0) contentLength + existingSize else -1L
-
-                val inputStream = resp.body?.byteStream()
-                    ?: throw Exception("Empty response body")
-
-                // Open in append mode if resuming, otherwise write mode
-                val outputStream = if (existingSize > 0) {
-                    outputFile.outputStream().apply {
-                        // Seek to end by opening in append mode
-                        close()
-                    }
-                    java.io.FileOutputStream(outputFile, true)
-                } else {
-                    outputFile.outputStream()
-                }
-
-                inputStream.use { input ->
-                    outputStream.use { output ->
-                        val buffer = ByteArray(BUFFER_SIZE)
-                        var bytesRead: Int
-                        var totalBytesWritten = existingSize
-                        var lastNotificationUpdate = 0L
-
-                        while (input.read(buffer).also { bytesRead = it } != -1) {
-                            // Check cancellation
-                            if (isStopped) {
-                                val progress = if (totalSize > 0) {
-                                    totalBytesWritten.toFloat() / totalSize
-                                } else 0f
-                                downloadDao.updateProgress(downloadId, progress, "paused")
-                                Log.d(TAG, "Download paused at $totalBytesWritten bytes")
-                                return Result.failure()
-                            }
-
-                            output.write(buffer, 0, bytesRead)
-                            totalBytesWritten += bytesRead
-
-                            val progress = if (totalSize > 0) {
-                                totalBytesWritten.toFloat() / totalSize
-                            } else 0f
-
-                            // Rate-limit progress updates to every 1 second
-                            val now = System.currentTimeMillis()
-                            if (now - lastNotificationUpdate > NOTIFICATION_THROTTLE_MS ||
-                                (totalSize > 0 && totalBytesWritten >= totalSize)
-                            ) {
-                                setProgress(workDataOf("progress" to progress))
-                                downloadDao.updateProgress(downloadId, progress, "downloading")
-                                try {
-                                    setForeground(createForegroundInfo(downloadId, title, progress))
-                                } catch (_: Exception) { }
-                                lastNotificationUpdate = now
-                            }
-                        }
-                    }
-                }
+            if (isHls) {
+                downloadHls(videoUrl, referer, outputFile, downloadId, title)
+            } else {
+                downloadDirect(videoUrl, referer, outputFile, downloadId, title)
             }
 
             // Update entity with final progress and file size
@@ -166,6 +99,197 @@ class VideoDownloadWorker @AssistedInject constructor(
             Log.e(TAG, "Download failed for $downloadId", e)
             downloadDao.updateProgress(downloadId, 0f, "failed")
             Result.failure()
+        }
+    }
+
+    /**
+     * Download an HLS stream by fetching the playlist, parsing segments, and concatenating them.
+     */
+    private suspend fun downloadHls(
+        m3u8Url: String,
+        referer: String,
+        outputFile: File,
+        downloadId: String,
+        title: String
+    ) {
+        val refererHeader = referer.ifBlank { null }
+
+        // Fetch the m3u8 playlist
+        val playlistText = httpClient.get(m3u8Url, referer = refererHeader)
+        Log.d(TAG, "M3U8 playlist length: ${playlistText.length}")
+
+        val baseUrl = m3u8Url.substringBeforeLast("/") + "/"
+
+        // Check if this is a master playlist (contains variant streams)
+        val variantPlaylist = if (playlistText.contains("#EXT-X-STREAM-INF")) {
+            // Pick the highest bandwidth variant
+            val lines = playlistText.lines()
+            var bestUrl: String? = null
+            var bestBandwidth = -1L
+            for (i in lines.indices) {
+                if (lines[i].startsWith("#EXT-X-STREAM-INF")) {
+                    val bw = Regex("""BANDWIDTH=(\d+)""").find(lines[i])
+                        ?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+                    val url = lines.getOrNull(i + 1)?.trim() ?: continue
+                    if (bw > bestBandwidth) {
+                        bestBandwidth = bw
+                        bestUrl = url
+                    }
+                }
+            }
+
+            if (bestUrl != null) {
+                val variantUrl = if (bestUrl.startsWith("http")) bestUrl else baseUrl + bestUrl
+                Log.d(TAG, "Selected variant: bandwidth=$bestBandwidth, url=${variantUrl.take(80)}...")
+                httpClient.get(variantUrl, referer = refererHeader)
+            } else {
+                playlistText
+            }
+        } else {
+            playlistText
+        }
+
+        // Parse .ts segment URLs from the variant playlist
+        val segments = variantPlaylist.lines()
+            .filter { it.isNotBlank() && !it.startsWith("#") }
+            .map { line ->
+                if (line.startsWith("http")) line
+                else baseUrl + line.trim()
+            }
+
+        Log.d(TAG, "Found ${segments.size} segments to download")
+
+        if (segments.isEmpty()) {
+            throw Exception("No segments found in HLS playlist")
+        }
+
+        // Change extension to .ts since we're concatenating transport stream segments
+        val tsFile = if (outputFile.extension == "mp4") {
+            File(outputFile.parent, outputFile.nameWithoutExtension + ".ts")
+        } else outputFile
+
+        // Download and concatenate all segments
+        tsFile.outputStream().use { output ->
+            var lastNotificationUpdate = 0L
+            for ((index, segmentUrl) in segments.withIndex()) {
+                if (isStopped) {
+                    val progress = index.toFloat() / segments.size
+                    downloadDao.updateProgress(downloadId, progress, "paused")
+                    Log.d(TAG, "HLS download paused at segment $index/${segments.size}")
+                    throw Exception("Download paused")
+                }
+
+                val response = httpClient.getRaw(segmentUrl, referer = refererHeader)
+                response.use { resp ->
+                    if (!resp.isSuccessful) {
+                        Log.e(TAG, "Failed to download segment $index: HTTP ${resp.code}")
+                        throw Exception("Failed to download segment $index: HTTP ${resp.code}")
+                    }
+                    resp.body?.byteStream()?.use { input ->
+                        input.copyTo(output)
+                    }
+                }
+
+                val progress = (index + 1).toFloat() / segments.size
+                val now = System.currentTimeMillis()
+                if (now - lastNotificationUpdate > NOTIFICATION_THROTTLE_MS || index == segments.size - 1) {
+                    setProgress(workDataOf("progress" to progress))
+                    downloadDao.updateProgress(downloadId, progress, "downloading")
+                    try {
+                        setForeground(createForegroundInfo(downloadId, title, progress))
+                    } catch (_: Exception) { }
+                    lastNotificationUpdate = now
+                }
+            }
+        }
+
+        // If we saved as .ts but the DB expects .mp4, rename
+        if (tsFile != outputFile) {
+            // Update the DB filePath to point to .ts file
+            val entity = downloadDao.getById(downloadId)
+            if (entity != null) {
+                downloadDao.upsert(entity.copy(filePath = tsFile.absolutePath))
+            }
+        }
+
+        Log.d(TAG, "HLS download complete: ${segments.size} segments, ${tsFile.length()} bytes")
+    }
+
+    /**
+     * Download a direct video file (MP4, etc.) with resume support.
+     */
+    private suspend fun downloadDirect(
+        videoUrl: String,
+        referer: String,
+        outputFile: File,
+        downloadId: String,
+        title: String
+    ) {
+        val existingSize = if (outputFile.exists()) outputFile.length() else 0L
+        val headers = mutableMapOf<String, String>()
+        if (existingSize > 0) {
+            headers["Range"] = "bytes=$existingSize-"
+            Log.d(TAG, "Resuming download from byte $existingSize")
+        }
+
+        val response = httpClient.getRaw(videoUrl, headers = headers, referer = referer.ifBlank { null })
+        response.use { resp ->
+            if (!resp.isSuccessful && resp.code != 206) {
+                Log.e(TAG, "Failed to download video: HTTP ${resp.code}")
+                downloadDao.updateProgress(downloadId, 0f, "failed")
+                throw Exception("Failed to download video: HTTP ${resp.code}")
+            }
+
+            val contentLength = resp.body?.contentLength() ?: -1L
+            val totalSize = if (contentLength > 0) contentLength + existingSize else -1L
+
+            val inputStream = resp.body?.byteStream()
+                ?: throw Exception("Empty response body")
+
+            val outputStream = if (existingSize > 0) {
+                java.io.FileOutputStream(outputFile, true)
+            } else {
+                outputFile.outputStream()
+            }
+
+            inputStream.use { input ->
+                outputStream.use { output ->
+                    val buffer = ByteArray(BUFFER_SIZE)
+                    var bytesRead: Int
+                    var totalBytesWritten = existingSize
+                    var lastNotificationUpdate = 0L
+
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        if (isStopped) {
+                            val progress = if (totalSize > 0) {
+                                totalBytesWritten.toFloat() / totalSize
+                            } else 0f
+                            downloadDao.updateProgress(downloadId, progress, "paused")
+                            Log.d(TAG, "Download paused at $totalBytesWritten bytes")
+                            throw Exception("Download paused")
+                        }
+
+                        output.write(buffer, 0, bytesRead)
+                        totalBytesWritten += bytesRead
+
+                        val progress = if (totalSize > 0) {
+                            totalBytesWritten.toFloat() / totalSize
+                        } else 0f
+
+                        val now = System.currentTimeMillis()
+                        if (now - lastNotificationUpdate > NOTIFICATION_THROTTLE_MS ||
+                            (totalSize > 0 && totalBytesWritten >= totalSize)
+                        ) {
+                            setProgress(workDataOf("progress" to progress))
+                            downloadDao.updateProgress(downloadId, progress, "downloading")
+                            try {
+                                setForeground(createForegroundInfo(downloadId, title, progress))
+                            } catch (_: Exception) { }
+                            lastNotificationUpdate = now
+                        }
+                    }
+                }
+            }
         }
     }
 

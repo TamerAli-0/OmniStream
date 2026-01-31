@@ -110,13 +110,25 @@ class MangaDownloadWorker @AssistedInject constructor(
                 if (pageFile.exists() && pageFile.length() > 0) {
                     Log.d(TAG, "Skipping already downloaded page $index")
                 } else {
-                    // Download page image
+                    // Download page image with image-specific headers
                     val referer = page.referer ?: source.baseUrl
-                    val response = httpClient.getRaw(page.imageUrl, referer = referer)
+                    val imageHeaders = mapOf(
+                        "Accept" to "image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                        "Sec-Fetch-Dest" to "image",
+                        "Sec-Fetch-Mode" to "no-cors",
+                        "Sec-Fetch-Site" to "cross-site"
+                    )
+                    val response = httpClient.getRaw(page.imageUrl, headers = imageHeaders, referer = referer)
                     response.use { resp ->
                         if (!resp.isSuccessful) {
                             Log.e(TAG, "Failed to download page $index: HTTP ${resp.code}")
                             throw Exception("Failed to download page $index: HTTP ${resp.code}")
+                        }
+                        // Validate response is actually an image
+                        val contentType = resp.header("Content-Type") ?: ""
+                        if (contentType.startsWith("text/html")) {
+                            Log.e(TAG, "Page $index returned HTML instead of image (blocked by CDN?)")
+                            throw Exception("CDN blocked image download for page $index")
                         }
                         resp.body?.byteStream()?.use { input ->
                             pageFile.outputStream().use { output ->

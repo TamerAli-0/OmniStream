@@ -49,21 +49,29 @@ class PlayerViewModel @Inject constructor(
             android.util.Log.d("PlayerViewModel", "Loading video links: sourceId=$sourceId, videoId=$videoId, episodeId=$episodeId")
 
             try {
-                // Check if episode is downloaded for offline playback
-                val downloadId = "video_${sourceId}_${videoId}_${episodeId}"
-                val downloadEntity = downloadDao.getById(downloadId)
+                // Check if episode is downloaded for offline playback (query by fields, not reconstructed ID)
+                val downloadEntity = downloadDao.getByEpisode(sourceId, videoId, episodeId)
 
                 if (downloadEntity != null && downloadEntity.status == "completed") {
-                    val localFile = File(downloadEntity.filePath)
-                    if (localFile.exists()) {
+                    // Check both the stored path and .ts variant (HLS downloads save as .ts)
+                    val storedFile = File(downloadEntity.filePath)
+                    val tsFile = if (storedFile.extension == "mp4") {
+                        File(storedFile.parent, storedFile.nameWithoutExtension + ".ts")
+                    } else null
+                    val localFile = when {
+                        storedFile.exists() && storedFile.length() > 1000 -> storedFile
+                        tsFile?.exists() == true && tsFile.length() > 1000 -> tsFile
+                        else -> null
+                    }
+                    if (localFile != null) {
                         val localLink = VideoLink(
-                            url = "file://${downloadEntity.filePath}",
+                            url = "file://${localFile.absolutePath}",
                             quality = "Downloaded",
                             extractorName = "offline",
                             isM3u8 = false,
                             isDash = false
                         )
-                        android.util.Log.d("PlayerViewModel", "Using offline video: ${localFile.absolutePath}")
+                        android.util.Log.d("PlayerViewModel", "Using offline video: ${localFile.absolutePath} (${localFile.length()} bytes)")
 
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,

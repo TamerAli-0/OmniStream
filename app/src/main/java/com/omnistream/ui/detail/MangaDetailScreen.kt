@@ -390,8 +390,16 @@ private fun ChapterItem(
             }
 
             Column(modifier = Modifier.weight(1f)) {
+                val chapterNumStr = if (chapter.number % 1f == 0f) chapter.number.toInt().toString() else chapter.number.toString()
+                val chapterTitle = chapter.title?.let { title ->
+                    // Don't repeat "Chapter X" if title is just that
+                    if (title.equals("Chapter ${chapterNumStr}", ignoreCase = true) ||
+                        title.equals("Chapter ${chapter.number}", ignoreCase = true) ||
+                        title.equals("Ch. ${chapterNumStr}", ignoreCase = true)
+                    ) null else title
+                }
                 Text(
-                    text = "Chapter ${chapter.number}" + (chapter.title?.let { ": $it" } ?: ""),
+                    text = "Chapter $chapterNumStr" + (chapterTitle?.let { ": $it" } ?: ""),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
