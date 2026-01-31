@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-01-29)
 ## Current Position
 
 Phase: 8 -- Foundation, Bug Fixes, and Progress Tracking
-Plan: 01 of 4 (Room Migration v1->v2)
-Status: In progress
-Progress: [####......] 2/4 plans in phase 8
-Last activity: 2026-01-31 -- Completed 08-01-PLAN.md (Room migration, entities, DAOs, repository, Hilt)
+Plan: 04 of 4 (Continue Watching/Reading Rows)
+Status: Phase complete
+Progress: [##########] 4/4 plans in phase 8
+Last activity: 2026-01-31 -- Completed 08-04-PLAN.md (Continue Watching/Reading rows on Home screen)
 
 ## Performance Metrics
 
-Plans completed: 2
-Requirements delivered: 2/19
-Phases completed: 0/5
+Plans completed: 4
+Requirements delivered: 4/19
+Phases completed: 1/5
 
 ## Accumulated Context
 
@@ -38,10 +38,14 @@ Phases completed: 0/5
 - performSearch uses coroutineScope{} for structured concurrency in flatMapLatest
 - WatchHistoryEntity uses "sourceId:contentId" composite string PK (matches FavoriteEntity pattern)
 - Unified watch_history table for video and manga (contentType discriminator, not separate tables)
+- Continue rows placed at top of Home LazyColumn, before all source sections
+- Video continue cards: 16:9 aspect ratio with 3dp LinearProgressIndicator at thumbnail bottom
+- Manga continue cards: 0.7 portrait aspect ratio with percentage badge overlay
+- Long-press dropdown menu pattern: combinedClickable + DropdownMenu for context actions
 
 ### Known Issues
 - ~~Library screen only shows cloud sync data, not local Room favorites (BUG-01, Phase 8)~~ FIXED 08-02
-- No reading progress persistence (BUG-03, Phase 8)
+- ~~No reading progress persistence (BUG-03, Phase 8)~~ ADDRESSED 08-03/08-04
 - GogoAnime details page crashes (deferred to Future, not in v2.0 scope)
 - ~~Search race condition with rapid typing (BUG-02, Phase 8)~~ FIXED 08-02
 - No search timeout handling (SEARCH-02, Phase 10)
@@ -57,11 +61,14 @@ Phases completed: 0/5
 - Player features partially implemented -- Phase 11/12 complete what exists
 - Pattern: Room Flow collection in ViewModel init for reactive UI
 - Pattern: MutableStateFlow + debounce + distinctUntilChanged + flatMapLatest for search
+- Pattern: combinedClickable + DropdownMenu for long-press context menus
 - WatchHistoryRepository injectable via Hilt, wraps WatchHistoryDao
 - All new DAOs (WatchHistory, SearchHistory, Download) provided by Hilt via AppModule
+- HomeViewModel injects WatchHistoryRepository, collects continueWatching/continueReading Flows
+- HomeScreen has ContinueWatchingRow/ContinueReadingRow composables with progress indicators
 
 ### Todos
-- Execute 08-03, 08-04
+- Execute Phase 9 (Downloads)
 
 ### Blockers
 - None
@@ -69,8 +76,8 @@ Phases completed: 0/5
 ## Session Continuity
 
 Last session ended: 2026-01-31
-Next step: Execute 08-03 (progress tracking implementation using WatchHistoryRepository)
-Key context for next session: Room v2 migration complete. WatchHistoryEntity/Dao/Repository, SearchHistoryEntity/Dao, DownloadEntity/Dao all exist and compile. Hilt wiring done in AppModule. Ready for 08-03 (progress tracking) and 08-04.
+Next step: Execute Phase 9 (Downloads) or Phase 10 (Search improvements)
+Key context for next session: Phase 8 complete. Room v2 migration, bug fixes, progress tracking, and continue rows all done. HomeViewModel has WatchHistoryRepository injected. HomeScreen shows continue watching/reading rows at top. Ready for next phase.
 
 ---
 *Last updated: 2026-01-31*
