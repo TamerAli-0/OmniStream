@@ -1,7 +1,9 @@
 package com.omnistream.ui.detail
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,14 +24,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -73,18 +80,34 @@ fun VideoDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(uiState.video?.title ?: "Loading...") },
+            title = {
+                if (uiState.isSelectionMode) {
+                    Text("${uiState.selectedEpisodes.size} selected")
+                } else {
+                    Text(uiState.video?.title ?: "Loading...")
+                }
+            },
             navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                if (uiState.isSelectionMode) {
+                    IconButton(onClick = { viewModel.clearSelection() }) {
+                        Icon(Icons.Default.Close, "Cancel selection")
+                    }
+                } else {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
                 }
             },
             actions = {
-                IconButton(onClick = { viewModel.toggleFavorite() }) {
-                    Icon(
-                        if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Favorite"
-                    )
+                if (uiState.isSelectionMode) {
+                    // No extra actions needed; batch download button is in the list
+                } else {
+                    IconButton(onClick = { viewModel.toggleFavorite() }) {
+                        Icon(
+                            if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Favorite"
+                        )
+                    }
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -281,33 +304,56 @@ fun VideoDetailScreen(
                         ) {
                             // Play button for movies (single episode)
                             if (uiState.episodes.size == 1) {
-                                Button(
-                                    onClick = {
-                                        uiState.episodes.firstOrNull()?.let { episode ->
-                                            val encodedVideoId = URLEncoder.encode(videoId, "UTF-8")
-                                            val encodedEpisodeId = URLEncoder.encode(episode.id, "UTF-8")
-                                            val encodedTitle = URLEncoder.encode(uiState.video?.title ?: "", "UTF-8")
-                                            val encodedCover = URLEncoder.encode(uiState.video?.posterUrl ?: "", "UTF-8")
-                                            navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId/$encodedTitle/$encodedCover")
-                                        }
-                                    },
+                                Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary
-                                    )
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Default.PlayArrow,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        "Play Now",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                                    Button(
+                                        onClick = {
+                                            uiState.episodes.firstOrNull()?.let { episode ->
+                                                val encodedVideoId = URLEncoder.encode(videoId, "UTF-8")
+                                                val encodedEpisodeId = URLEncoder.encode(episode.id, "UTF-8")
+                                                val encodedTitle = URLEncoder.encode(uiState.video?.title ?: "", "UTF-8")
+                                                val encodedCover = URLEncoder.encode(uiState.video?.posterUrl ?: "", "UTF-8")
+                                                navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId/$encodedTitle/$encodedCover")
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    ) {
+                                        Icon(
+                                            Icons.Default.PlayArrow,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "Play Now",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+
+                                    // Download button for single-episode (movie)
+                                    uiState.episodes.firstOrNull()?.let { episode ->
+                                        val isDownloading = episode.id in uiState.downloadingEpisodeIds
+                                        FilledTonalButton(
+                                            onClick = { viewModel.downloadEpisode(episode) },
+                                            shape = RoundedCornerShape(8.dp),
+                                            enabled = !isDownloading
+                                        ) {
+                                            Icon(
+                                                if (isDownloading) Icons.Default.CheckCircle else Icons.Outlined.Download,
+                                                contentDescription = if (isDownloading) "Queued" else "Download",
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(if (isDownloading) "Queued" else "Download")
+                                        }
+                                    }
                                 }
                             }
 
@@ -360,6 +406,26 @@ fun VideoDetailScreen(
 
                     // Episodes section (for TV shows/anime)
                     if (uiState.episodes.size > 1) {
+                        // Batch download button in selection mode
+                        if (uiState.isSelectionMode && uiState.selectedEpisodes.isNotEmpty()) {
+                            item {
+                                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                                    Button(
+                                        onClick = { viewModel.downloadSelectedEpisodes() },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiary
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.Download, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Download Selected (${uiState.selectedEpisodes.size})")
+                                    }
+                                }
+                            }
+                        }
+
                         item {
                             Column(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -376,12 +442,28 @@ fun VideoDetailScreen(
                             Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                                 EpisodeItem(
                                     episode = episode,
+                                    isSelectionMode = uiState.isSelectionMode,
+                                    isSelected = episode.id in uiState.selectedEpisodes,
+                                    isDownloading = episode.id in uiState.downloadingEpisodeIds,
                                     onClick = {
-                                        val encodedVideoId = URLEncoder.encode(videoId, "UTF-8")
-                                        val encodedEpisodeId = URLEncoder.encode(episode.id, "UTF-8")
-                                        val encodedTitle = URLEncoder.encode(uiState.video?.title ?: "", "UTF-8")
-                                        val encodedCover = URLEncoder.encode(uiState.video?.posterUrl ?: "", "UTF-8")
-                                        navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId/$encodedTitle/$encodedCover")
+                                        if (uiState.isSelectionMode) {
+                                            viewModel.toggleEpisodeSelection(episode.id)
+                                        } else {
+                                            val encodedVideoId = URLEncoder.encode(videoId, "UTF-8")
+                                            val encodedEpisodeId = URLEncoder.encode(episode.id, "UTF-8")
+                                            val encodedTitle = URLEncoder.encode(uiState.video?.title ?: "", "UTF-8")
+                                            val encodedCover = URLEncoder.encode(uiState.video?.posterUrl ?: "", "UTF-8")
+                                            navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId/$encodedTitle/$encodedCover")
+                                        }
+                                    },
+                                    onLongClick = {
+                                        if (!uiState.isSelectionMode) {
+                                            viewModel.toggleSelectionMode()
+                                            viewModel.toggleEpisodeSelection(episode.id)
+                                        }
+                                    },
+                                    onDownloadClick = {
+                                        viewModel.downloadEpisode(episode)
                                     }
                                 )
                             }
@@ -393,18 +475,30 @@ fun VideoDetailScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EpisodeItem(
     episode: Episode,
-    onClick: () -> Unit
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
+    isDownloading: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onDownloadClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
         Row(
@@ -414,6 +508,14 @@ private fun EpisodeItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Checkbox in selection mode
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() }
+                )
+            }
+
             // Thumbnail
             Surface(
                 modifier = Modifier
@@ -472,11 +574,28 @@ private fun EpisodeItem(
                 }
             }
 
-            Icon(
-                Icons.Default.PlayArrow,
-                contentDescription = "Play",
-                tint = MaterialTheme.colorScheme.primary
-            )
+            // Download or play icon
+            if (!isSelectionMode) {
+                IconButton(
+                    onClick = onDownloadClick,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    if (isDownloading) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Queued",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        Icon(
+                            Icons.Outlined.Download,
+                            contentDescription = "Download",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

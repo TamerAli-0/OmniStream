@@ -1,15 +1,20 @@
 package com.omnistream.ui.detail
 
+import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.DownloadEntity
 import com.omnistream.data.local.FavoriteDao
 import com.omnistream.data.local.FavoriteEntity
+import com.omnistream.data.repository.DownloadRepository
 import com.omnistream.domain.model.Episode
 import com.omnistream.domain.model.Video
 import com.omnistream.source.SourceManager
 import com.omnistream.source.model.VideoType
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +25,8 @@ import javax.inject.Inject
 class VideoDetailViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val favoriteDao: FavoriteDao,
+    private val downloadRepository: DownloadRepository,
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -142,6 +149,65 @@ class VideoDetailViewModel @Inject constructor(
             }
         }
     }
+
+    // --- Download methods ---
+
+    fun downloadEpisode(episode: Episode) {
+        val video = _uiState.value.video ?: return
+        val downloadId = "video_${sourceId}_${videoId}_${episode.id}"
+        val filePath = "${context.filesDir}/downloads/video/$sourceId/$videoId/${episode.id}.mp4"
+
+        val entity = DownloadEntity(
+            id = downloadId,
+            contentId = videoId,
+            sourceId = sourceId,
+            contentType = "video",
+            title = "${video.title} - Ep. ${episode.number}",
+            coverUrl = video.posterUrl,
+            episodeId = episode.id,
+            filePath = filePath,
+            status = "pending"
+        )
+
+        _uiState.value = _uiState.value.copy(
+            downloadingEpisodeIds = _uiState.value.downloadingEpisodeIds + episode.id
+        )
+
+        viewModelScope.launch {
+            downloadRepository.enqueueDownload(entity)
+            Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun downloadSelectedEpisodes() {
+        val episodes = _uiState.value.episodes
+        val selectedIds = _uiState.value.selectedEpisodes
+        val selected = episodes.filter { it.id in selectedIds }
+        selected.forEach { downloadEpisode(it) }
+        clearSelection()
+    }
+
+    fun toggleSelectionMode() {
+        val current = _uiState.value
+        _uiState.value = current.copy(
+            isSelectionMode = !current.isSelectionMode,
+            selectedEpisodes = if (current.isSelectionMode) emptySet() else current.selectedEpisodes
+        )
+    }
+
+    fun toggleEpisodeSelection(episodeId: String) {
+        val current = _uiState.value.selectedEpisodes
+        _uiState.value = _uiState.value.copy(
+            selectedEpisodes = if (episodeId in current) current - episodeId else current + episodeId
+        )
+    }
+
+    fun clearSelection() {
+        _uiState.value = _uiState.value.copy(
+            isSelectionMode = false,
+            selectedEpisodes = emptySet()
+        )
+    }
 }
 
 data class VideoDetailUiState(
@@ -150,5 +216,8 @@ data class VideoDetailUiState(
     val episodesError: String? = null,
     val video: Video? = null,
     val episodes: List<Episode> = emptyList(),
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val selectedEpisodes: Set<String> = emptySet(),
+    val isSelectionMode: Boolean = false,
+    val downloadingEpisodeIds: Set<String> = emptySet()
 )
