@@ -1,6 +1,8 @@
 package com.omnistream.ui.detail
 
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,21 +14,27 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
-import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -65,18 +73,34 @@ fun MangaDetailScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(uiState.manga?.title ?: "Loading...") },
+            title = {
+                if (uiState.isSelectionMode) {
+                    Text("${uiState.selectedChapters.size} selected")
+                } else {
+                    Text(uiState.manga?.title ?: "Loading...")
+                }
+            },
             navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                if (uiState.isSelectionMode) {
+                    IconButton(onClick = { viewModel.clearSelection() }) {
+                        Icon(Icons.Default.Close, "Cancel selection")
+                    }
+                } else {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
                 }
             },
             actions = {
-                IconButton(onClick = { viewModel.toggleFavorite() }) {
-                    Icon(
-                        if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Favorite"
-                    )
+                if (uiState.isSelectionMode) {
+                    // No extra actions needed; batch download button is below
+                } else {
+                    IconButton(onClick = { viewModel.toggleFavorite() }) {
+                        Icon(
+                            if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Favorite"
+                        )
+                    }
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -221,6 +245,24 @@ fun MangaDetailScreen(
                         }
                     }
 
+                    // Batch download button (visible in selection mode)
+                    if (uiState.isSelectionMode && uiState.selectedChapters.isNotEmpty()) {
+                        item {
+                            Button(
+                                onClick = { viewModel.downloadSelectedChapters() },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiary
+                                )
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Download Selected (${uiState.selectedChapters.size})")
+                            }
+                        }
+                    }
+
                     // Chapters header with sort toggle
                     item {
                         Row(
@@ -247,12 +289,28 @@ fun MangaDetailScreen(
                     items(uiState.chapters) { chapter ->
                         ChapterItem(
                             chapter = chapter,
+                            isSelectionMode = uiState.isSelectionMode,
+                            isSelected = chapter.id in uiState.selectedChapters,
+                            isDownloading = chapter.id in uiState.downloadingChapterIds,
                             onClick = {
-                                val encodedMangaId = URLEncoder.encode(mangaId, "UTF-8")
-                                val encodedChapterId = URLEncoder.encode(chapter.id, "UTF-8")
-                                val encodedTitle = URLEncoder.encode(uiState.manga?.title ?: "", "UTF-8")
-                                val encodedCover = URLEncoder.encode(uiState.manga?.coverUrl ?: "", "UTF-8")
-                                navController.navigate("reader/$sourceId/$encodedMangaId/$encodedChapterId/$encodedTitle/$encodedCover")
+                                if (uiState.isSelectionMode) {
+                                    viewModel.toggleChapterSelection(chapter.id)
+                                } else {
+                                    val encodedMangaId = URLEncoder.encode(mangaId, "UTF-8")
+                                    val encodedChapterId = URLEncoder.encode(chapter.id, "UTF-8")
+                                    val encodedTitle = URLEncoder.encode(uiState.manga?.title ?: "", "UTF-8")
+                                    val encodedCover = URLEncoder.encode(uiState.manga?.coverUrl ?: "", "UTF-8")
+                                    navController.navigate("reader/$sourceId/$encodedMangaId/$encodedChapterId/$encodedTitle/$encodedCover")
+                                }
+                            },
+                            onLongClick = {
+                                if (!uiState.isSelectionMode) {
+                                    viewModel.toggleSelectionMode()
+                                    viewModel.toggleChapterSelection(chapter.id)
+                                }
+                            },
+                            onDownloadClick = {
+                                viewModel.downloadChapter(chapter)
                             }
                         )
                     }
@@ -262,27 +320,48 @@ fun MangaDetailScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChapterItem(
     chapter: Chapter,
-    onClick: () -> Unit
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
+    isDownloading: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onDownloadClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Checkbox in selection mode
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Chapter ${chapter.number}" + (chapter.title?.let { ": $it" } ?: ""),
@@ -305,8 +384,32 @@ private fun ChapterItem(
                 Text(
                     text = formatDate(date),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(end = 4.dp)
                 )
+            }
+
+            // Download button (not in selection mode)
+            if (!isSelectionMode) {
+                IconButton(
+                    onClick = onDownloadClick,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    if (isDownloading) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Queued",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        Icon(
+                            Icons.Outlined.Download,
+                            contentDescription = "Download",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
         }
     }

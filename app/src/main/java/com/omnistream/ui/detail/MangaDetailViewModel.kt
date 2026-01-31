@@ -1,16 +1,21 @@
 package com.omnistream.ui.detail
 
+import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.DownloadEntity
 import com.omnistream.data.local.FavoriteDao
 import com.omnistream.data.local.FavoriteEntity
 import com.omnistream.data.local.WatchHistoryEntity
+import com.omnistream.data.repository.DownloadRepository
 import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.domain.model.Chapter
 import com.omnistream.domain.model.Manga
 import com.omnistream.source.SourceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +27,8 @@ class MangaDetailViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val favoriteDao: FavoriteDao,
     private val watchHistoryRepository: WatchHistoryRepository,
+    private val downloadRepository: DownloadRepository,
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -143,6 +150,65 @@ class MangaDetailViewModel @Inject constructor(
             }
         }
     }
+
+    // --- Download methods ---
+
+    fun downloadChapter(chapter: Chapter) {
+        val manga = _uiState.value.manga ?: return
+        val downloadId = "manga_${sourceId}_${mangaId}_${chapter.id}"
+        val filePath = "${context.filesDir}/downloads/manga/$sourceId/$mangaId/${chapter.id}"
+
+        val entity = DownloadEntity(
+            id = downloadId,
+            contentId = mangaId,
+            sourceId = sourceId,
+            contentType = "manga",
+            title = "${manga.title} - Ch. ${chapter.number}",
+            coverUrl = manga.coverUrl,
+            chapterId = chapter.id,
+            filePath = filePath,
+            status = "pending"
+        )
+
+        _uiState.value = _uiState.value.copy(
+            downloadingChapterIds = _uiState.value.downloadingChapterIds + chapter.id
+        )
+
+        viewModelScope.launch {
+            downloadRepository.enqueueDownload(entity)
+            Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun downloadSelectedChapters() {
+        val chapters = _uiState.value.chapters
+        val selectedIds = _uiState.value.selectedChapters
+        val selected = chapters.filter { it.id in selectedIds }
+        selected.forEach { downloadChapter(it) }
+        clearSelection()
+    }
+
+    fun toggleSelectionMode() {
+        val current = _uiState.value
+        _uiState.value = current.copy(
+            isSelectionMode = !current.isSelectionMode,
+            selectedChapters = if (current.isSelectionMode) emptySet() else current.selectedChapters
+        )
+    }
+
+    fun toggleChapterSelection(chapterId: String) {
+        val current = _uiState.value.selectedChapters
+        _uiState.value = _uiState.value.copy(
+            selectedChapters = if (chapterId in current) current - chapterId else current + chapterId
+        )
+    }
+
+    fun clearSelection() {
+        _uiState.value = _uiState.value.copy(
+            isSelectionMode = false,
+            selectedChapters = emptySet()
+        )
+    }
 }
 
 data class MangaDetailUiState(
@@ -153,5 +219,8 @@ data class MangaDetailUiState(
     val chapters: List<Chapter> = emptyList(),
     val isFavorite: Boolean = false,
     val chaptersAscending: Boolean = true,
-    val savedProgress: WatchHistoryEntity? = null
+    val savedProgress: WatchHistoryEntity? = null,
+    val selectedChapters: Set<String> = emptySet(),
+    val isSelectionMode: Boolean = false,
+    val downloadingChapterIds: Set<String> = emptySet()
 )
