@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnistream.data.local.FavoriteDao
 import com.omnistream.data.local.FavoriteEntity
+import com.omnistream.data.local.WatchHistoryEntity
+import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.domain.model.Chapter
 import com.omnistream.domain.model.Manga
 import com.omnistream.source.SourceManager
@@ -19,6 +21,7 @@ import javax.inject.Inject
 class MangaDetailViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val favoriteDao: FavoriteDao,
+    private val watchHistoryRepository: WatchHistoryRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -31,6 +34,24 @@ class MangaDetailViewModel @Inject constructor(
     init {
         loadMangaDetails()
         observeFavoriteStatus()
+        loadReadingProgress()
+    }
+
+    private fun loadReadingProgress() {
+        viewModelScope.launch {
+            val saved = watchHistoryRepository.getProgress(mangaId, sourceId)
+            if (saved != null && !saved.isCompleted) {
+                _uiState.value = _uiState.value.copy(savedProgress = saved)
+            }
+        }
+    }
+
+    fun toggleChapterSort() {
+        val current = _uiState.value
+        val newAscending = !current.chaptersAscending
+        val sorted = if (newAscending) current.chapters.sortedBy { it.number }
+                     else current.chapters.sortedByDescending { it.number }
+        _uiState.value = current.copy(chapters = sorted, chaptersAscending = newAscending)
     }
 
     private fun observeFavoriteStatus() {
@@ -130,5 +151,7 @@ data class MangaDetailUiState(
     val chaptersError: String? = null,
     val manga: Manga? = null,
     val chapters: List<Chapter> = emptyList(),
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val chaptersAscending: Boolean = true,
+    val savedProgress: WatchHistoryEntity? = null
 )

@@ -77,7 +77,7 @@ class PlayerViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     links = links,
-                    episodeTitle = episode.title ?: "Episode ${episode.number}",
+                    episodeTitle = videoTitle.ifBlank { episode.title ?: "Episode ${episode.number}" },
                     // Auto-select first link
                     selectedLink = links.firstOrNull()
                 )

@@ -270,11 +270,13 @@ fun OmniNavigation(
 
             // Manga reader
             composable(
-                route = "reader/{sourceId}/{mangaId}/{chapterId}",
+                route = "reader/{sourceId}/{mangaId}/{chapterId}/{title}/{coverUrl}",
                 arguments = listOf(
                     navArgument("sourceId") { type = NavType.StringType },
                     navArgument("mangaId") { type = NavType.StringType },
-                    navArgument("chapterId") { type = NavType.StringType }
+                    navArgument("chapterId") { type = NavType.StringType },
+                    navArgument("title") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("coverUrl") { type = NavType.StringType; defaultValue = "" }
                 )
             ) { backStackEntry ->
                 ReaderScreen(
@@ -287,11 +289,13 @@ fun OmniNavigation(
 
             // Video player
             composable(
-                route = "player/{sourceId}/{videoId}/{episodeId}",
+                route = "player/{sourceId}/{videoId}/{episodeId}/{title}/{coverUrl}",
                 arguments = listOf(
                     navArgument("sourceId") { type = NavType.StringType },
                     navArgument("videoId") { type = NavType.StringType },
-                    navArgument("episodeId") { type = NavType.StringType }
+                    navArgument("episodeId") { type = NavType.StringType },
+                    navArgument("title") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("coverUrl") { type = NavType.StringType; defaultValue = "" }
                 )
             ) { backStackEntry ->
                 PlayerScreen(

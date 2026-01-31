@@ -20,6 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
@@ -193,13 +197,50 @@ fun MangaDetailScreen(
                         }
                     }
 
-                    // Chapters header
+                    // Continue Reading button
+                    uiState.savedProgress?.let { progress ->
+                        item {
+                            Button(
+                                onClick = {
+                                    val encodedMangaId = URLEncoder.encode(mangaId, "UTF-8")
+                                    val encodedChapterId = URLEncoder.encode(progress.chapterId ?: "", "UTF-8")
+                                    val encodedTitle = URLEncoder.encode(uiState.manga?.title ?: "", "UTF-8")
+                                    val encodedCover = URLEncoder.encode(uiState.manga?.coverUrl ?: "", "UTF-8")
+                                    navController.navigate("reader/$sourceId/$encodedMangaId/$encodedChapterId/$encodedTitle/$encodedCover")
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Continue Reading · Ch. ${progress.chapterIndex + 1}")
+                            }
+                        }
+                    }
+
+                    // Chapters header with sort toggle
                     item {
-                        Text(
-                            text = "Chapters (${uiState.chapters.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Chapters (${uiState.chapters.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(onClick = { viewModel.toggleChapterSort() }) {
+                                Icon(
+                                    if (uiState.chaptersAscending) Icons.Default.KeyboardArrowDown
+                                    else Icons.Default.KeyboardArrowUp,
+                                    contentDescription = if (uiState.chaptersAscending) "Sort Descending" else "Sort Ascending"
+                                )
+                            }
+                        }
                     }
 
                     // Chapter list
@@ -209,7 +250,9 @@ fun MangaDetailScreen(
                             onClick = {
                                 val encodedMangaId = URLEncoder.encode(mangaId, "UTF-8")
                                 val encodedChapterId = URLEncoder.encode(chapter.id, "UTF-8")
-                                navController.navigate("reader/$sourceId/$encodedMangaId/$encodedChapterId")
+                                val encodedTitle = URLEncoder.encode(uiState.manga?.title ?: "", "UTF-8")
+                                val encodedCover = URLEncoder.encode(uiState.manga?.coverUrl ?: "", "UTF-8")
+                                navController.navigate("reader/$sourceId/$encodedMangaId/$encodedChapterId/$encodedTitle/$encodedCover")
                             }
                         )
                     }

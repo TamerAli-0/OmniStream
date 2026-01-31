@@ -286,7 +286,9 @@ fun VideoDetailScreen(
                                         uiState.episodes.firstOrNull()?.let { episode ->
                                             val encodedVideoId = URLEncoder.encode(videoId, "UTF-8")
                                             val encodedEpisodeId = URLEncoder.encode(episode.id, "UTF-8")
-                                            navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId")
+                                            val encodedTitle = URLEncoder.encode(uiState.video?.title ?: "", "UTF-8")
+                                            val encodedCover = URLEncoder.encode(uiState.video?.posterUrl ?: "", "UTF-8")
+                                            navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId/$encodedTitle/$encodedCover")
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth(),
@@ -377,7 +379,9 @@ fun VideoDetailScreen(
                                     onClick = {
                                         val encodedVideoId = URLEncoder.encode(videoId, "UTF-8")
                                         val encodedEpisodeId = URLEncoder.encode(episode.id, "UTF-8")
-                                        navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId")
+                                        val encodedTitle = URLEncoder.encode(uiState.video?.title ?: "", "UTF-8")
+                                        val encodedCover = URLEncoder.encode(uiState.video?.posterUrl ?: "", "UTF-8")
+                                        navController.navigate("player/$sourceId/$encodedVideoId/$encodedEpisodeId/$encodedTitle/$encodedCover")
                                     }
                                 )
                             }
