@@ -4,11 +4,15 @@ import android.content.Context
 import androidx.room.Room
 import com.omnistream.core.network.OmniHttpClient
 import com.omnistream.data.local.AppDatabase
+import com.omnistream.data.local.DownloadDao
 import com.omnistream.data.local.FavoriteDao
+import com.omnistream.data.local.SearchHistoryDao
 import com.omnistream.data.local.UserPreferences
+import com.omnistream.data.local.WatchHistoryDao
 import com.omnistream.data.remote.ApiService
 import com.omnistream.data.repository.AuthRepository
 import com.omnistream.data.repository.SyncRepository
+import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.source.SourceManager
 import dagger.Module
 import dagger.Provides
@@ -77,11 +81,32 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "omnistream.db"
-        ).build()
+        ).addMigrations(AppDatabase.MIGRATION_1_2).build()
     }
 
     @Provides
     fun provideFavoriteDao(database: AppDatabase): FavoriteDao {
         return database.favoriteDao()
+    }
+
+    @Provides
+    fun provideWatchHistoryDao(database: AppDatabase): WatchHistoryDao {
+        return database.watchHistoryDao()
+    }
+
+    @Provides
+    fun provideSearchHistoryDao(database: AppDatabase): SearchHistoryDao {
+        return database.searchHistoryDao()
+    }
+
+    @Provides
+    fun provideDownloadDao(database: AppDatabase): DownloadDao {
+        return database.downloadDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideWatchHistoryRepository(watchHistoryDao: WatchHistoryDao): WatchHistoryRepository {
+        return WatchHistoryRepository(watchHistoryDao)
     }
 }
