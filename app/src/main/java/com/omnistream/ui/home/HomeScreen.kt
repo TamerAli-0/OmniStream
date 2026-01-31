@@ -2,8 +2,10 @@
 
 package com.omnistream.ui.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,9 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +46,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.omnistream.data.local.WatchHistoryEntity
 import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Video
 import java.net.URLEncoder
@@ -186,6 +195,38 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(28.dp),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
+                    // Continue Watching row (only if items exist)
+                    if (uiState.continueWatching.isNotEmpty()) {
+                        item {
+                            ContinueWatchingRow(
+                                items = uiState.continueWatching,
+                                onItemClick = { item ->
+                                    val encodedId = URLEncoder.encode(item.contentId, "UTF-8")
+                                    navController.navigate("video/${item.sourceId}/$encodedId")
+                                },
+                                onDeleteItem = { item ->
+                                    viewModel.deleteFromHistory(item.id)
+                                }
+                            )
+                        }
+                    }
+
+                    // Continue Reading row (only if items exist)
+                    if (uiState.continueReading.isNotEmpty()) {
+                        item {
+                            ContinueReadingRow(
+                                items = uiState.continueReading,
+                                onItemClick = { item ->
+                                    val encodedId = URLEncoder.encode(item.contentId, "UTF-8")
+                                    navController.navigate("manga/${item.sourceId}/$encodedId")
+                                },
+                                onDeleteItem = { item ->
+                                    viewModel.deleteFromHistory(item.id)
+                                }
+                            )
+                        }
+                    }
+
                     // Video sections (Anime + Movies)
                     items(uiState.videoSections) { section ->
                         VideoSectionRow(
@@ -550,6 +591,242 @@ private fun MangaCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContinueWatchingRow(
+    items: List<WatchHistoryEntity>,
+    onItemClick: (WatchHistoryEntity) -> Unit,
+    onDeleteItem: (WatchHistoryEntity) -> Unit
+) {
+    Column {
+        Text(
+            text = "Continue Watching",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(items) { item ->
+                ContinueWatchingCard(
+                    item = item,
+                    onClick = { onItemClick(item) },
+                    onDelete = { onDeleteItem(item) }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ContinueWatchingCard(
+    item: WatchHistoryEntity,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .width(160.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { showMenu = true }
+            ),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Box {
+            Column {
+                Box {
+                    AsyncImage(
+                        model = item.coverUrl,
+                        contentDescription = item.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                    )
+                    // Thin progress bar at bottom of thumbnail
+                    LinearProgressIndicator(
+                        progress = { item.progressPercentage.coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .align(Alignment.BottomCenter),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = Color.Black.copy(alpha = 0.5f)
+                    )
+                }
+                Text(
+                    text = item.title,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            // Long-press dropdown menu
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Continue") },
+                    onClick = {
+                        showMenu = false
+                        onClick()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Delete") },
+                    onClick = {
+                        showMenu = false
+                        onDelete()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Details") },
+                    onClick = {
+                        showMenu = false
+                        onClick()
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContinueReadingRow(
+    items: List<WatchHistoryEntity>,
+    onItemClick: (WatchHistoryEntity) -> Unit,
+    onDeleteItem: (WatchHistoryEntity) -> Unit
+) {
+    Column {
+        Text(
+            text = "Continue Reading",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(items) { item ->
+                ContinueReadingCard(
+                    item = item,
+                    onClick = { onItemClick(item) },
+                    onDelete = { onDeleteItem(item) }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ContinueReadingCard(
+    item: WatchHistoryEntity,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .width(135.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { showMenu = true }
+            ),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
+    ) {
+        Box {
+            Column {
+                Box {
+                    AsyncImage(
+                        model = item.coverUrl,
+                        contentDescription = item.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(0.7f)
+                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                    )
+                    // Percentage overlay at bottom-right of thumbnail
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp),
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color.Black.copy(alpha = 0.7f)
+                    ) {
+                        Text(
+                            text = "${(item.progressPercentage * 100).toInt()}%",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
+                }
+                Text(
+                    text = item.title,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            // Long-press dropdown menu
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Continue") },
+                    onClick = {
+                        showMenu = false
+                        onClick()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Delete") },
+                    onClick = {
+                        showMenu = false
+                        onDelete()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Details") },
+                    onClick = {
+                        showMenu = false
+                        onClick()
+                    }
+                )
             }
         }
     }
