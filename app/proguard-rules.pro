@@ -16,6 +16,7 @@
 # Jsoup
 -keep class org.jsoup.** { *; }
 -keeppackagenames org.jsoup.nodes
+-dontwarn org.jspecify.annotations.**
 
 # Kotlinx Serialization
 -keepattributes *Annotation*, InnerClasses
