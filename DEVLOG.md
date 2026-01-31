@@ -1,7 +1,44 @@
 # OmniStream Development Log
 
-**Last Updated:** January 29, 2026
-**Session:** Room Database + Reader Nav + API Key Security
+**Last Updated:** January 31, 2026
+**Session:** Phase 8 Complete + Bug Fixes
+
+---
+
+## Jan 31, 2026 - Phase 8 Execution + Post-Execution Bug Fixes
+
+### Phase 8: Foundation, Bug Fixes, and Progress Tracking (COMPLETE)
+Executed 4 plans across 2 waves via GSD system.
+
+**What was delivered:**
+- Room migration v1 to v2 (adds watch_history, search_history, downloads tables)
+- 7 new files: WatchHistoryEntity, SearchHistoryEntity, DownloadEntity + DAOs + WatchHistoryRepository
+- Library screen now reads from local Room FavoriteDao (not cloud-only) — BUG-01 FIXED
+- Search uses Flow debounce(400).distinctUntilChanged().flatMapLatest{} — BUG-02 FIXED
+- Manga reading progress auto-saves every 12s, resumes exact page — BUG-03 FIXED
+- Video progress saves on pause/exit with "Resume from X:XX?" dialog — PLAYER-01 FIXED
+- Continue Watching/Reading rows on Home screen (Netflix-style) — PLAYER-01
+
+### Post-Execution Bug Fixes (from testing on device)
+
+1. **Continue Watching card showed no image + wrong title** — Player nav route didn't pass title/coverUrl, so watch history saved empty values. Fixed: VideoDetailScreen now passes title+posterUrl to player route.
+
+2. **Player showed "Episode 1234731" instead of movie name** — episodeTitle fell back to extracting number from TMDB ID. Fixed: PlayerViewModel now uses videoTitle (from nav args) as primary display name.
+
+3. **Continue Reading card showed no manga cover** — Same root cause as #1 for reader route. Fixed: MangaDetailScreen now passes title+coverUrl to reader route.
+
+4. **No chapter sort on manga detail page** — With 800+ chapters, scrolling to find current chapter was painful. Fixed: Added ascending/descending sort toggle button next to "Chapters (N)" header.
+
+5. **No "Continue Reading" button on manga detail page** — Had to manually find the chapter. Fixed: Added "Continue Reading - Ch. X" button that appears when saved progress exists.
+
+### Files Modified
+- `ui/detail/MangaDetailViewModel.kt` — Added WatchHistoryRepository, loadReadingProgress(), toggleChapterSort(), chaptersAscending state
+- `ui/detail/MangaDetailScreen.kt` — Continue Reading button, chapter sort toggle, title+coverUrl in reader nav
+- `ui/detail/VideoDetailScreen.kt` — Pass title+posterUrl to player route (both play button and episode list)
+- `ui/navigation/OmniNavigation.kt` — Added title+coverUrl args to both reader and player routes
+- `ui/player/PlayerViewModel.kt` — Use videoTitle for display, not "Episode {number}"
+
+### Build Status: SUCCESSFUL
 
 ---
 
