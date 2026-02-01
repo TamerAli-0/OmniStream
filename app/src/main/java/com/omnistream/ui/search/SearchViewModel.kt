@@ -151,6 +151,18 @@ class SearchViewModel @Inject constructor(
             SearchFilter.MANGA -> results.filterIsInstance<SearchResult.MangaResult>()
         }
     }
+
+    fun deleteFromHistory(query: String) {
+        viewModelScope.launch {
+            searchHistoryDao.deleteByQuery(query)
+        }
+    }
+
+    fun clearAllHistory() {
+        viewModelScope.launch {
+            searchHistoryDao.clearAll()
+        }
+    }
 }
 
 data class SearchUiState(
