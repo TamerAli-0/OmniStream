@@ -209,7 +209,7 @@ fun SectionedResultsList(
 }
 
 @Composable
-private fun GenreFilterRow(
+fun GenreFilterRow(
     availableGenres: List<String>,
     selectedGenres: Set<String>,
     onToggleGenre: (String) -> Unit,
@@ -241,7 +241,7 @@ private fun GenreFilterRow(
 }
 
 @Composable
-private fun YearFilterRow(
+fun YearFilterRow(
     availableYears: List<Int>,
     selectedYear: Int?,
     onSetYear: (Int?) -> Unit,
