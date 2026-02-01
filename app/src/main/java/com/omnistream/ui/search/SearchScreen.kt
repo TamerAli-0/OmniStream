@@ -29,14 +29,20 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +62,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -67,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.omnistream.data.local.SearchHistoryEntity
 import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Video
 import com.omnistream.source.model.VideoType
@@ -78,7 +86,10 @@ fun SearchScreen(
     viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val searchHistory by viewModel.searchHistory.collectAsState()
+    val filteredResults by viewModel.filteredResults.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    var isDropdownExpanded by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
 
@@ -110,56 +121,84 @@ fun SearchScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Search Input
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = {
-                    searchQuery = it
-                    viewModel.search(it)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester),
-                placeholder = {
-                    Text(
-                        "Search movies, TV shows, anime, manga...",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = {
-                            searchQuery = ""
-                            viewModel.search("")
-                        }) {
-                            Icon(
-                                Icons.Default.Clear,
-                                contentDescription = "Clear",
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
+            // Search Input with History Dropdown
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                        viewModel.search(it)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { focusState ->
+                            // Show dropdown when focused, query empty, and has history
+                            isDropdownExpanded = focusState.isFocused &&
+                                                  searchQuery.isEmpty() &&
+                                                  searchHistory.isNotEmpty()
+                        },
+                    placeholder = {
+                        Text(
+                            "Search movies, TV shows, anime, manga...",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = {
+                                searchQuery = ""
+                                viewModel.search("")
+                            }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Clear",
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                            }
                         }
-                    }
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = { focusManager.clearFocus() }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(
+                        onSearch = { focusManager.clearFocus() }
+                    )
                 )
-            )
+
+                SearchHistoryDropdown(
+                    searchHistory = searchHistory,
+                    isExpanded = isDropdownExpanded,
+                    onDismiss = { isDropdownExpanded = false },
+                    onHistoryItemClick = { query ->
+                        searchQuery = query
+                        viewModel.search(query)
+                        isDropdownExpanded = false
+                        focusManager.clearFocus()
+                    },
+                    onDeleteClick = { query ->
+                        viewModel.deleteFromHistory(query)
+                        // Dropdown stays open for multi-delete
+                    },
+                    onClearAll = {
+                        viewModel.clearAllHistory()
+                        isDropdownExpanded = false
+                    }
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -170,7 +209,7 @@ fun SearchScreen(
                 items(SearchFilter.entries) { filter ->
                     FilterChip(
                         selected = uiState.selectedFilter == filter,
-                        onClick = { viewModel.setFilter(filter) },
+                        onClick = { viewModel.setContentTypeFilter(filter) },
                         label = {
                             Text(
                                 filter.label,
@@ -241,7 +280,7 @@ fun SearchScreen(
                     }
                 }
 
-                uiState.error != null && viewModel.getFilteredResults().isEmpty() -> {
+                uiState.error != null && filteredResults.isEmpty() -> {
                     // Error / No results
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -267,7 +306,6 @@ fun SearchScreen(
 
                 else -> {
                     // Results
-                    val filteredResults = viewModel.getFilteredResults()
 
                     LazyColumn(
                         contentPadding = PaddingValues(16.dp),
@@ -609,6 +647,76 @@ private fun MangaResultCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun SearchHistoryDropdown(
+    searchHistory: List<SearchHistoryEntity>,
+    isExpanded: Boolean,
+    onDismiss: () -> Unit,
+    onHistoryItemClick: (String) -> Unit,
+    onDeleteClick: (String) -> Unit,
+    onClearAll: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    DropdownMenu(
+        expanded = isExpanded,
+        onDismissRequest = onDismiss,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        searchHistory.forEach { historyItem ->
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        historyItem.query,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                },
+                onClick = { onHistoryItemClick(historyItem.query) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.History,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                trailingIcon = {
+                    IconButton(
+                        onClick = { onDeleteClick(historyItem.query) }
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            )
+        }
+
+        // Clear all history option
+        if (searchHistory.isNotEmpty()) {
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        "Clear all history",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                },
+                onClick = onClearAll,
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.DeleteForever,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            )
         }
     }
 }
