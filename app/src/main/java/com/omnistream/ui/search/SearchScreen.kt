@@ -1,4 +1,7 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.ExperimentalFoundationApi::class
+)
 
 package com.omnistream.ui.search
 
@@ -35,6 +38,7 @@ import androidx.compose.material.icons.filled.FilterAltOff
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -81,6 +85,128 @@ import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Video
 import com.omnistream.source.model.VideoType
 import java.net.URLEncoder
+
+@Composable
+private fun SectionHeader(title: String, count: Int) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Text(
+            text = "$title ($count)",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+    }
+}
+
+@Composable
+fun SectionedResultsList(
+    results: List<SearchResult>,
+    uiState: SearchUiState,
+    onVideoClick: (SearchResult.VideoResult) -> Unit,
+    onMangaClick: (SearchResult.MangaResult) -> Unit,
+    onClearFilters: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Group by content type (fixed order: Movies -> Anime -> Manga)
+        val movies = results.filterIsInstance<SearchResult.VideoResult>()
+            .filter { it.video.type == VideoType.MOVIE }
+        val anime = results.filterIsInstance<SearchResult.VideoResult>()
+            .filter { it.video.type == VideoType.ANIME }
+        val manga = results.filterIsInstance<SearchResult.MangaResult>()
+
+        // Movies section (first)
+        if (movies.isNotEmpty()) {
+            stickyHeader("movies_header") {
+                SectionHeader("Movies", movies.size)
+            }
+            items(movies, key = { it.video.id }) { result ->
+                VideoResultCard(
+                    video = result.video,
+                    onClick = { onVideoClick(result) }
+                )
+            }
+        }
+
+        // Anime section (second)
+        if (anime.isNotEmpty()) {
+            item { Spacer(Modifier.height(8.dp)) }
+            stickyHeader("anime_header") {
+                SectionHeader("Anime", anime.size)
+            }
+            items(anime, key = { it.video.id }) { result ->
+                VideoResultCard(
+                    video = result.video,
+                    onClick = { onVideoClick(result) }
+                )
+            }
+        }
+
+        // Manga section (third)
+        if (manga.isNotEmpty()) {
+            item { Spacer(Modifier.height(8.dp)) }
+            stickyHeader("manga_header") {
+                SectionHeader("Manga", manga.size)
+            }
+            items(manga, key = { it.manga.id }) { result ->
+                MangaResultCard(
+                    manga = result.manga,
+                    onClick = { onMangaClick(result) }
+                )
+            }
+        }
+
+        // Empty state with filter suggestion
+        if (results.isEmpty() && uiState.query.isNotBlank() && !uiState.isLoading) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.SearchOff,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        uiState.error ?: "No results found",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Suggest loosening filters if any active
+                    if (uiState.selectedFilter != SearchFilter.ALL ||
+                        uiState.selectedGenres.isNotEmpty() ||
+                        uiState.selectedYear != null
+                    ) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Try loosening your filters",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = onClearFilters) {
+                            Text("Clear all filters")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun GenreFilterRow(
@@ -426,43 +552,20 @@ fun SearchScreen(
 
                 else -> {
                     // Results
-
-                    LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    SectionedResultsList(
+                        results = filteredResults,
+                        uiState = uiState,
+                        onVideoClick = { result ->
+                            val encodedId = URLEncoder.encode(result.video.id, "UTF-8")
+                            navController.navigate("video/${result.video.sourceId}/$encodedId")
+                        },
+                        onMangaClick = { result ->
+                            val encodedId = URLEncoder.encode(result.manga.id, "UTF-8")
+                            navController.navigate("manga/${result.manga.sourceId}/$encodedId")
+                        },
+                        onClearFilters = { viewModel.clearAllFilters() },
                         modifier = Modifier.fillMaxSize()
-                    ) {
-                        item {
-                            Text(
-                                "${filteredResults.size} results",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
-
-                        items(filteredResults) { result ->
-                            when (result) {
-                                is SearchResult.VideoResult -> {
-                                    VideoResultCard(
-                                        video = result.video,
-                                        onClick = {
-                                            val encodedId = URLEncoder.encode(result.video.id, "UTF-8")
-                                            navController.navigate("video/${result.video.sourceId}/$encodedId")
-                                        }
-                                    )
-                                }
-                                is SearchResult.MangaResult -> {
-                                    MangaResultCard(
-                                        manga = result.manga,
-                                        onClick = {
-                                            val encodedId = URLEncoder.encode(result.manga.id, "UTF-8")
-                                            navController.navigate("manga/${result.manga.sourceId}/$encodedId")
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    )
                 }
             }
         }
