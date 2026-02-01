@@ -2,6 +2,8 @@ package com.omnistream.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.local.SearchHistoryDao
+import com.omnistream.data.local.SearchHistoryEntity
 import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Video
 import com.omnistream.source.SourceManager
@@ -11,6 +13,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
@@ -18,19 +21,29 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val sourceManager: SourceManager
+    private val sourceManager: SourceManager,
+    private val searchHistoryDao: SearchHistoryDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
+
+    val searchHistory: StateFlow<List<SearchHistoryEntity>> =
+        searchHistoryDao.getRecentSearches(limit = 5)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList()
+            )
 
     init {
         viewModelScope.launch {
