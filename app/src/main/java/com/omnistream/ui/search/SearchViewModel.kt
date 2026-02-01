@@ -12,6 +12,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +38,9 @@ class SearchViewModel @Inject constructor(
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
+
+    // Track failed sources to skip for 10 minutes
+    private val failedSourcesCache = mutableMapOf<String, Long>()
 
     val searchHistory: StateFlow<List<SearchHistoryEntity>> =
         searchHistoryDao.getRecentSearches(limit = 5)
@@ -62,7 +67,15 @@ class SearchViewModel @Inject constructor(
                                     isLoading = false,
                                     results = results,
                                     query = query,
-                                    error = if (results.isEmpty()) "No results found" else null,
+                                    error = if (results.isEmpty()) {
+                                        if (_searchQuery.value.isNotBlank()) {
+                                            "No results found. Sources may be slow or unavailable."
+                                        } else {
+                                            null
+                                        }
+                                    } else {
+                                        null
+                                    },
                                     selectedFilter = _uiState.value.selectedFilter
                                 ))
                                 saveToHistory(query)  // Save after successful search
@@ -90,36 +103,62 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    private suspend fun performSearch(query: String): List<SearchResult> = coroutineScope {
+    private suspend fun performSearch(query: String): List<SearchResult> = supervisorScope {
         val videoSources = sourceManager.getAllVideoSources()
         val mangaSources = sourceManager.getAllMangaSources()
 
-        // Search all sources in parallel
-        val videoResults = videoSources.map { source ->
-            async {
-                try {
-                    source.search(query, 1).map { video ->
-                        SearchResult.VideoResult(video)
+        // Search all sources in parallel with timeout and failure caching
+        val videoResults = videoSources
+            .filter { source ->
+                // Skip sources that failed in last 10 minutes
+                val lastFailure = failedSourcesCache[source.name]
+                lastFailure == null || (System.currentTimeMillis() - lastFailure) > 10 * 60 * 1000
+            }
+            .map { source ->
+                async {
+                    withTimeoutOrNull(8000L) {
+                        try {
+                            source.search(query, 1).map { video ->
+                                SearchResult.VideoResult(video)
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("SearchViewModel", "Search failed for ${source.name}", e)
+                            failedSourcesCache[source.name] = System.currentTimeMillis()
+                            emptyList()
+                        }
+                    } ?: run {
+                        android.util.Log.w("SearchViewModel", "Timeout for ${source.name} after 8000ms")
+                        failedSourcesCache[source.name] = System.currentTimeMillis()
+                        emptyList()
                     }
-                } catch (e: Exception) {
-                    android.util.Log.e("SearchViewModel", "Search failed for ${source.name}", e)
-                    emptyList()
                 }
             }
-        }
 
-        val mangaResults = mangaSources.map { source ->
-            async {
-                try {
-                    source.search(query, 1).map { manga ->
-                        SearchResult.MangaResult(manga)
+        val mangaResults = mangaSources
+            .filter { source ->
+                // Skip sources that failed in last 10 minutes
+                val lastFailure = failedSourcesCache[source.name]
+                lastFailure == null || (System.currentTimeMillis() - lastFailure) > 10 * 60 * 1000
+            }
+            .map { source ->
+                async {
+                    withTimeoutOrNull(8000L) {
+                        try {
+                            source.search(query, 1).map { manga ->
+                                SearchResult.MangaResult(manga)
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("SearchViewModel", "Search failed for ${source.name}", e)
+                            failedSourcesCache[source.name] = System.currentTimeMillis()
+                            emptyList()
+                        }
+                    } ?: run {
+                        android.util.Log.w("SearchViewModel", "Timeout for ${source.name} after 8000ms")
+                        failedSourcesCache[source.name] = System.currentTimeMillis()
+                        emptyList()
                     }
-                } catch (e: Exception) {
-                    android.util.Log.e("SearchViewModel", "Search failed for ${source.name}", e)
-                    emptyList()
                 }
             }
-        }
 
         val allVideoResults = videoResults.awaitAll().flatten()
         val allMangaResults = mangaResults.awaitAll().flatten()
