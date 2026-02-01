@@ -65,6 +65,7 @@ class SearchViewModel @Inject constructor(
                                     error = if (results.isEmpty()) "No results found" else null,
                                     selectedFilter = _uiState.value.selectedFilter
                                 ))
+                                saveToHistory(query)  // Save after successful search
                             } catch (e: Exception) {
                                 android.util.Log.e("SearchViewModel", "Search failed", e)
                                 emit(_uiState.value.copy(
@@ -81,6 +82,12 @@ class SearchViewModel @Inject constructor(
 
     fun search(query: String) {
         _searchQuery.value = query
+    }
+
+    private suspend fun saveToHistory(query: String) {
+        if (query.isNotBlank()) {
+            searchHistoryDao.insert(SearchHistoryEntity(query = query.trim()))
+        }
     }
 
     private suspend fun performSearch(query: String): List<SearchResult> = coroutineScope {
