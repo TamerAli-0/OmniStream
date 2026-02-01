@@ -27,6 +27,7 @@ class UserPreferences @Inject constructor(
         private val USER_EMAIL = stringPreferencesKey("user_email")
         private val COLOR_SCHEME = stringPreferencesKey("color_scheme")
         private val DARK_MODE = stringPreferencesKey("dark_mode") // "dark", "light", "system"
+        private val SEARCH_CONTENT_TYPE_FILTER = stringPreferencesKey("search_content_type")
     }
 
     val isUnlocked: Flow<Boolean> = context.dataStore.data.map { it[IS_UNLOCKED] ?: false }
@@ -36,6 +37,7 @@ class UserPreferences @Inject constructor(
     val userEmail: Flow<String?> = context.dataStore.data.map { it[USER_EMAIL] }
     val colorScheme: Flow<String> = context.dataStore.data.map { it[COLOR_SCHEME] ?: "purple" }
     val darkMode: Flow<String> = context.dataStore.data.map { it[DARK_MODE] ?: "dark" }
+    val searchContentTypeFilter: Flow<String> = context.dataStore.data.map { it[SEARCH_CONTENT_TYPE_FILTER] ?: "ALL" }
 
     suspend fun setUnlocked(unlocked: Boolean, tier: String) {
         context.dataStore.edit {
@@ -67,6 +69,10 @@ class UserPreferences @Inject constructor(
 
     suspend fun setDarkMode(mode: String) {
         context.dataStore.edit { it[DARK_MODE] = mode }
+    }
+
+    suspend fun setSearchContentTypeFilter(filterType: String) {
+        context.dataStore.edit { it[SEARCH_CONTENT_TYPE_FILTER] = filterType }
     }
 
     suspend fun clearAll() {
