@@ -9,6 +9,7 @@ import com.omnistream.data.local.FavoriteDao
 import com.omnistream.data.local.SearchHistoryDao
 import com.omnistream.data.local.UserPreferences
 import com.omnistream.data.local.WatchHistoryDao
+import com.omnistream.data.preferences.PlayerPreferencesRepository
 import com.omnistream.data.remote.ApiService
 import com.omnistream.data.repository.AuthRepository
 import com.omnistream.data.repository.SyncRepository
@@ -118,5 +119,13 @@ object AppModule {
         @ApplicationContext context: Context
     ): DownloadRepository {
         return DownloadRepository(downloadDao, context)
+    }
+
+    @Provides
+    @Singleton
+    fun providePlayerPreferencesRepository(
+        @ApplicationContext context: Context
+    ): PlayerPreferencesRepository {
+        return PlayerPreferencesRepository(context)
     }
 }

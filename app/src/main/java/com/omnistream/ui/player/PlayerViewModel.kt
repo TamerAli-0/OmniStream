@@ -1,21 +1,28 @@
 package com.omnistream.ui.player
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.exoplayer.ExoPlayer
 import com.omnistream.data.local.DownloadDao
 import com.omnistream.data.local.WatchHistoryEntity
+import com.omnistream.data.preferences.PlayerPreferencesRepository
 import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.domain.model.Episode
 import com.omnistream.domain.model.VideoLink
+import com.omnistream.domain.models.VideoQuality
 import com.omnistream.source.SourceManager
 import com.omnistream.source.model.VideoType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
@@ -25,6 +32,7 @@ class PlayerViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val watchHistoryRepository: WatchHistoryRepository,
     private val downloadDao: DownloadDao,
+    private val prefsRepository: PlayerPreferencesRepository,
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -38,9 +46,41 @@ class PlayerViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
+    // Quality preference Flow from DataStore
+    val maxVideoHeight: StateFlow<Int> = prefsRepository.preferences
+        .map { it.maxVideoHeight }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = Int.MAX_VALUE
+        )
+
+    // Subtitle state for tracking loaded subtitle URI
+    private val _currentSubtitleUri = MutableStateFlow<Uri?>(null)
+    val currentSubtitleUri: StateFlow<Uri?> = _currentSubtitleUri
+
     init {
         loadVideoLinks()
         loadSavedProgress()
+    }
+
+    /**
+     * Apply quality preference to player's track selection parameters.
+     *
+     * Call this from the Activity after player initialization.
+     * The Flow collection will automatically apply quality constraints when preferences change.
+     *
+     * @param player ExoPlayer instance to apply constraints to
+     */
+    fun applyQualityPreferences(player: ExoPlayer) {
+        viewModelScope.launch {
+            maxVideoHeight.collect { height ->
+                player.trackSelectionParameters = player.trackSelectionParameters
+                    .buildUpon()
+                    .setMaxVideoSize(Int.MAX_VALUE, height)
+                    .build()
+            }
+        }
     }
 
     private fun loadVideoLinks() {
@@ -183,6 +223,33 @@ class PlayerViewModel @Inject constructor(
                 )
             )
         }
+    }
+
+    /**
+     * Set video quality preference.
+     *
+     * Saves the quality to DataStore, which triggers the maxVideoHeight Flow.
+     * The applyQualityPreferences() collector will automatically apply the new constraint.
+     *
+     * @param quality VideoQuality preset (AUTO, SD_480P, HD_720P, FULL_HD_1080P, or Custom)
+     */
+    fun setQuality(quality: VideoQuality) {
+        viewModelScope.launch {
+            prefsRepository.setMaxVideoHeight(quality.maxHeight)
+            // Flow collection in applyQualityPreferences() will apply it
+        }
+    }
+
+    /**
+     * Set current subtitle URI.
+     *
+     * Used to track which subtitle file is currently loaded.
+     * Activity should observe this to reload media when subtitle changes.
+     *
+     * @param uri Subtitle file URI (SRT/VTT) or null to disable subtitles
+     */
+    fun setSubtitle(uri: Uri?) {
+        _currentSubtitleUri.value = uri
     }
 }
 
