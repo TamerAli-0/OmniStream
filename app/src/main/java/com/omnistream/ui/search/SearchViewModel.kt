@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.omnistream.data.local.SearchHistoryDao
 import com.omnistream.data.local.SearchHistoryEntity
+import com.omnistream.data.local.UserPreferences
 import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Video
 import com.omnistream.source.SourceManager
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -31,7 +33,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val sourceManager: SourceManager,
-    private val searchHistoryDao: SearchHistoryDao
+    private val searchHistoryDao: SearchHistoryDao,
+    private val userPreferences: UserPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchUiState())
@@ -50,6 +53,25 @@ class SearchViewModel @Inject constructor(
                 initialValue = emptyList()
             )
 
+    val persistentContentTypeFilter: StateFlow<String> =
+        userPreferences.searchContentTypeFilter
+            .stateIn(viewModelScope, SharingStarted.Eagerly, "ALL")
+
+    val filteredResults: StateFlow<List<SearchResult>> = _uiState
+        .map { uiState ->
+            when (uiState.selectedFilter) {
+                SearchFilter.ALL -> uiState.results
+                SearchFilter.MOVIES -> uiState.results.filterIsInstance<SearchResult.VideoResult>()
+                    .filter { it.video.type == VideoType.MOVIE }
+                SearchFilter.TV -> uiState.results.filterIsInstance<SearchResult.VideoResult>()
+                    .filter { it.video.type == VideoType.TV_SERIES }
+                SearchFilter.ANIME -> uiState.results.filterIsInstance<SearchResult.VideoResult>()
+                    .filter { it.video.type == VideoType.ANIME }
+                SearchFilter.MANGA -> uiState.results.filterIsInstance<SearchResult.MangaResult>()
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
         viewModelScope.launch {
             _searchQuery
@@ -62,12 +84,17 @@ class SearchViewModel @Inject constructor(
                         flow {
                             emit(_uiState.value.copy(isLoading = true, error = null, query = query))
                             try {
-                                val results = performSearch(query)
+                                val allResults = performSearch(query)
+
+                                // Store ALL results in _uiState.value FIRST
+                                _uiState.value = _uiState.value.copy(results = allResults)
+
+                                // Emit state (filteredResults StateFlow will derive from _uiState.results)
                                 emit(SearchUiState(
                                     isLoading = false,
-                                    results = results,
+                                    results = allResults,
                                     query = query,
-                                    error = if (results.isEmpty()) {
+                                    error = if (allResults.isEmpty()) {
                                         if (_searchQuery.value.isNotBlank()) {
                                             "No results found. Sources may be slow or unavailable."
                                         } else {
@@ -173,7 +200,10 @@ class SearchViewModel @Inject constructor(
             }
     }
 
-    fun setFilter(filter: SearchFilter) {
+    fun setContentTypeFilter(filter: SearchFilter) {
+        viewModelScope.launch {
+            userPreferences.setSearchContentTypeFilter(filter.name)
+        }
         _uiState.value = _uiState.value.copy(selectedFilter = filter)
     }
 
