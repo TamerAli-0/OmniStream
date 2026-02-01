@@ -11,7 +11,9 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
@@ -24,6 +26,10 @@ import android.graphics.Color
 import android.graphics.Typeface
 import androidx.media3.common.text.Cue
 import com.omnistream.R
+import com.omnistream.ui.player.components.QualitySelectionDialog
+import com.omnistream.ui.player.components.SubtitlePickerDialog
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 /**
  * Activity-based video player with subtitle support and custom styling.
@@ -31,14 +37,19 @@ import com.omnistream.R
  * This Activity provides:
  * - External subtitle file loading (SRT/VTT)
  * - Custom subtitle styling (white text, semi-transparent background, outline)
- * - Picture-in-Picture support (enhanced in Plan 03)
- * - Quality selection infrastructure (enhanced in Plan 03)
+ * - Picture-in-Picture support (Plan 03)
+ * - Quality selection with DataStore persistence (Plan 04)
+ * - Subtitle picker with SAF file selection (Plan 04)
  */
 @UnstableApi
+@AndroidEntryPoint
 class VideoPlayerActivity : AppCompatActivity() {
 
     private lateinit var player: ExoPlayer
     private lateinit var playerView: PlayerView
+
+    // ViewModel with quality preferences and subtitle state
+    private val viewModel: PlayerViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +67,120 @@ class VideoPlayerActivity : AppCompatActivity() {
 
         // Setup immersive mode
         setupImmersiveMode()
+
+        // Apply quality preferences from DataStore
+        viewModel.applyQualityPreferences(player)
+
+        // Observe subtitle URI changes to reload media with new subtitle
+        observeSubtitleChanges()
+
+        // Wire up player controls (quality and subtitle dialogs)
+        setupPlayerControls()
+    }
+
+    /**
+     * Setup player control UI for quality selection and subtitle loading.
+     *
+     * For now, adds click listeners to PlayerView overlay.
+     * In future, can add floating action buttons or toolbar menu items.
+     *
+     * Note: PlayerView has built-in controls but doesn't expose quality/subtitle buttons.
+     * We'll add custom controls via long-press on PlayerView as a simple interim solution.
+     */
+    private fun setupPlayerControls() {
+        // Long press on PlayerView shows settings menu
+        playerView.setOnLongClickListener {
+            showPlayerSettingsMenu()
+            true
+        }
+    }
+
+    /**
+     * Show settings menu for player controls (quality, subtitles).
+     *
+     * Displays an AlertDialog with options to adjust quality and subtitles.
+     */
+    private fun showPlayerSettingsMenu() {
+        val options = arrayOf("Video Quality", "Subtitles")
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Player Settings")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showQualityDialog()
+                    1 -> showSubtitlePicker()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /**
+     * Show quality selection dialog.
+     *
+     * Displays available video qualities from player tracks.
+     * On selection, saves quality preference to DataStore.
+     */
+    private fun showQualityDialog() {
+        QualitySelectionDialog(player) { selectedQuality ->
+            viewModel.setQuality(selectedQuality)
+        }.show(supportFragmentManager, "quality")
+    }
+
+    /**
+     * Show subtitle picker dialog.
+     *
+     * Allows user to load external subtitle file or disable subtitles.
+     * On selection, updates ViewModel subtitle state to trigger reload.
+     */
+    private fun showSubtitlePicker() {
+        SubtitlePickerDialog { uri ->
+            viewModel.setSubtitle(uri)
+        }.show(supportFragmentManager, "subtitle")
+    }
+
+    /**
+     * Observe subtitle URI changes to reload media with new subtitle.
+     *
+     * When subtitle changes, preserves playback position and reloads current video
+     * with the new subtitle configuration.
+     *
+     * Note: Uses drop(1) to skip initial emission and only react to user-triggered changes.
+     */
+    private fun observeSubtitleChanges() {
+        var isFirstEmission = true
+
+        lifecycleScope.launch {
+            viewModel.currentSubtitleUri.collect { subtitleUri ->
+                // Skip first emission (initial null value)
+                if (isFirstEmission) {
+                    isFirstEmission = false
+                    return@collect
+                }
+
+                // Get current video URI and playback position
+                val currentVideoUri = getCurrentVideoUri()
+                val currentPosition = player.currentPosition
+
+                // Only reload if we have a video loaded
+                if (currentVideoUri != null) {
+                    // Reload with new subtitle (or no subtitle if uri is null)
+                    loadVideoWithSubtitles(currentVideoUri, subtitleUri)
+
+                    // Restore playback position
+                    player.seekTo(currentPosition)
+                }
+            }
+        }
+    }
+
+    /**
+     * Get current video URI from player.
+     *
+     * @return Current media item URI or null if no media loaded
+     */
+    private fun getCurrentVideoUri(): Uri? {
+        return player.currentMediaItem?.localConfiguration?.uri
     }
 
     override fun onStart() {
