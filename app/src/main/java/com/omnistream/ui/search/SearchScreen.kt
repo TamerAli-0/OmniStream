@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.FilterAltOff
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
@@ -50,6 +51,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -79,6 +81,72 @@ import com.omnistream.domain.model.Manga
 import com.omnistream.domain.model.Video
 import com.omnistream.source.model.VideoType
 import java.net.URLEncoder
+
+@Composable
+private fun GenreFilterRow(
+    availableGenres: List<String>,
+    selectedGenres: Set<String>,
+    onToggleGenre: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (availableGenres.isNotEmpty()) {
+        Column(modifier = modifier) {
+            Text(
+                "Genres",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(availableGenres) { genre ->
+                    FilterChip(
+                        selected = genre in selectedGenres,
+                        onClick = { onToggleGenre(genre) },
+                        label = { Text(genre) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun YearFilterRow(
+    availableYears: List<Int>,
+    selectedYear: Int?,
+    onSetYear: (Int?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (availableYears.isNotEmpty()) {
+        Column(modifier = modifier) {
+            Text(
+                "Release Year",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(availableYears) { year ->
+                    FilterChip(
+                        selected = selectedYear == year,
+                        onClick = {
+                            onSetYear(if (selectedYear == year) null else year)
+                        },
+                        label = { Text(year.toString()) }
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun SearchScreen(
@@ -202,7 +270,7 @@ fun SearchScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Filter Chips
+            // Content Type Filter Chips
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -221,6 +289,58 @@ fun SearchScreen(
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                         )
                     )
+                }
+            }
+
+            // Extract available genres from current filtered results
+            val availableGenres = remember(filteredResults) {
+                filteredResults.flatMap { result ->
+                    when (result) {
+                        is SearchResult.VideoResult -> result.video.genres
+                        is SearchResult.MangaResult -> result.manga.genres
+                    }
+                }.distinct().sorted().take(10)  // Limit to top 10 genres for UI space
+            }
+
+            // Extract available years from current filtered results
+            val availableYears = remember(filteredResults) {
+                filteredResults.mapNotNull { result ->
+                    when (result) {
+                        is SearchResult.VideoResult -> result.video.year
+                        is SearchResult.MangaResult -> null
+                    }
+                }.distinct().sortedDescending().take(10)  // Last 10 years
+            }
+
+            // Show genre/year filters only when search has results
+            if (uiState.query.isNotBlank() && filteredResults.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                GenreFilterRow(
+                    availableGenres = availableGenres,
+                    selectedGenres = uiState.selectedGenres,
+                    onToggleGenre = { viewModel.toggleGenreFilter(it) }
+                )
+
+                YearFilterRow(
+                    availableYears = availableYears,
+                    selectedYear = uiState.selectedYear,
+                    onSetYear = { viewModel.setYearFilter(it) }
+                )
+            }
+
+            // Clear filters button (if any non-ALL filters active)
+            if (uiState.selectedFilter != SearchFilter.ALL ||
+                uiState.selectedGenres.isNotEmpty() ||
+                uiState.selectedYear != null
+            ) {
+                TextButton(
+                    onClick = { viewModel.clearAllFilters() },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.FilterAltOff, "Clear filters")
+                    Spacer(Modifier.width(4.dp))
+                    Text("Clear all filters")
                 }
             }
         }
