@@ -59,16 +59,44 @@ class SearchViewModel @Inject constructor(
 
     val filteredResults: StateFlow<List<SearchResult>> = _uiState
         .map { uiState ->
-            when (uiState.selectedFilter) {
-                SearchFilter.ALL -> uiState.results
-                SearchFilter.MOVIES -> uiState.results.filterIsInstance<SearchResult.VideoResult>()
+            var results = uiState.results
+
+            // Apply content type filter
+            results = when (uiState.selectedFilter) {
+                SearchFilter.ALL -> results
+                SearchFilter.MOVIES -> results.filterIsInstance<SearchResult.VideoResult>()
                     .filter { it.video.type == VideoType.MOVIE }
-                SearchFilter.TV -> uiState.results.filterIsInstance<SearchResult.VideoResult>()
+                SearchFilter.TV -> results.filterIsInstance<SearchResult.VideoResult>()
                     .filter { it.video.type == VideoType.TV_SERIES }
-                SearchFilter.ANIME -> uiState.results.filterIsInstance<SearchResult.VideoResult>()
+                SearchFilter.ANIME -> results.filterIsInstance<SearchResult.VideoResult>()
                     .filter { it.video.type == VideoType.ANIME }
-                SearchFilter.MANGA -> uiState.results.filterIsInstance<SearchResult.MangaResult>()
+                SearchFilter.MANGA -> results.filterIsInstance<SearchResult.MangaResult>()
             }
+
+            // Apply genre filter (if any genres selected)
+            if (uiState.selectedGenres.isNotEmpty()) {
+                results = results.filter { result ->
+                    val genres = when (result) {
+                        is SearchResult.VideoResult -> result.video.genres ?: emptyList()
+                        is SearchResult.MangaResult -> result.manga.genres ?: emptyList()
+                    }
+                    // Match if ANY selected genre is present in content's genres
+                    genres.any { it in uiState.selectedGenres }
+                }
+            }
+
+            // Apply year filter (if set)
+            uiState.selectedYear?.let { selectedYear ->
+                results = results.filter { result ->
+                    val year = when (result) {
+                        is SearchResult.VideoResult -> result.video.year
+                        is SearchResult.MangaResult -> null  // Manga doesn't have year field
+                    }
+                    year == selectedYear
+                }
+            }
+
+            results
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -103,7 +131,9 @@ class SearchViewModel @Inject constructor(
                                     } else {
                                         null
                                     },
-                                    selectedFilter = _uiState.value.selectedFilter
+                                    selectedFilter = _uiState.value.selectedFilter,
+                                    selectedGenres = _uiState.value.selectedGenres,
+                                    selectedYear = _uiState.value.selectedYear
                                 ))
                                 saveToHistory(query)  // Save after successful search
                             } catch (e: Exception) {
@@ -232,6 +262,31 @@ class SearchViewModel @Inject constructor(
             searchHistoryDao.clearAll()
         }
     }
+
+    fun toggleGenreFilter(genre: String) {
+        val currentGenres = _uiState.value.selectedGenres
+        val newGenres = if (currentGenres.contains(genre)) {
+            currentGenres - genre
+        } else {
+            currentGenres + genre
+        }
+        _uiState.value = _uiState.value.copy(selectedGenres = newGenres)
+    }
+
+    fun setYearFilter(year: Int?) {
+        _uiState.value = _uiState.value.copy(selectedYear = year)
+    }
+
+    fun clearAllFilters() {
+        _uiState.value = _uiState.value.copy(
+            selectedFilter = SearchFilter.ALL,
+            selectedGenres = emptySet(),
+            selectedYear = null
+        )
+        viewModelScope.launch {
+            userPreferences.setSearchContentTypeFilter("ALL")
+        }
+    }
 }
 
 data class SearchUiState(
@@ -239,7 +294,9 @@ data class SearchUiState(
     val error: String? = null,
     val query: String = "",
     val results: List<SearchResult> = emptyList(),
-    val selectedFilter: SearchFilter = SearchFilter.ALL
+    val selectedFilter: SearchFilter = SearchFilter.ALL,
+    val selectedGenres: Set<String> = emptySet(),  // Multi-select, session-only
+    val selectedYear: Int? = null  // Single-select, session-only (null = "Any year")
 )
 
 sealed class SearchResult {
