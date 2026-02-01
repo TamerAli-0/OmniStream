@@ -50,11 +50,12 @@
 
         <!-- Video Player Activity (for PiP support) -->
         <activity
-            android:name=".ui.player.PlayerActivity"
+            android:name=".ui.player.VideoPlayerActivity"
             android:exported="false"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:supportsPictureInPicture="true"
-            android:launchMode="singleTop" />
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:enableOnBackInvokedCallback="false"
+            android:launchMode="singleTask" />
 
         <!-- WorkManager foreground service needs dataSync type for download workers -->
         <service
