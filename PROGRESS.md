@@ -8,13 +8,18 @@
 3. ✅ AniList GraphQL API client
 4. ✅ Committed to git (commit: 0e1b6e3)
 
-### In Progress
-- Fixing WatchFlix download 403 error (m3u8 downloads need proper Referer headers)
-- Completing AniList integration:
-  - AniListLoginScreen (WebView OAuth flow)
-  - AniListSyncManager (auto-sync manga/anime progress)
-  - Settings UI to connect/disconnect AniList
-  - Integration with ReaderViewModel and PlayerViewModel
+### Recently Completed (Session Continued)
+- ✅ AniList complete integration (OAuth login, sync manager, API client)
+- ✅ Comprehensive settings screen (Saikou + Kotatsu features combined)
+- ✅ First-time user onboarding flow with customization
+- ✅ Saikou-style home screen with Anime/Manga tabs
+- ✅ Modern settings UI with all features
+
+### Next Integration
+- Hook up new screens to navigation
+- Integrate AniList sync with ReaderViewModel/PlayerViewModel
+- Add PreferencesManager to save onboarding choices
+- Style app with chosen theme/accent colors
 
 ### Next Steps
 1. Fix VideoDownloadWorker to include Referer/Origin headers for m3u8 downloads
