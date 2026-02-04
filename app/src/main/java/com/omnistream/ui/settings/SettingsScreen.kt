@@ -189,7 +189,7 @@ fun ComprehensiveSettingsScreen(
             item { SettingToggle(Icons.Default.Update, "Auto-Check Updates", "Check for app updates on startup", true, {}) }
             item { SettingItem(Icons.Default.BugReport, "Debug Mode", "Enable detailed logging", {}) }
             item { SettingToggle(Icons.Default.Analytics, "Analytics", "Help improve the app", false, {}) }
-            item { SettingToggle(Icons.Default.CrashReport, "Crash Reports", "Send crash reports automatically", false, {}) }
+            item { SettingToggle(Icons.Default.Report, "Crash Reports", "Send crash reports automatically", false, {}) }
 
             item { Spacer(Modifier.height(8.dp)) }
 
