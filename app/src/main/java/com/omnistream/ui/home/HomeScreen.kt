@@ -1,5 +1,6 @@
 package com.omnistream.ui.home
 
+import com.omnistream.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -42,12 +43,7 @@ fun HomeScreen(
     val totalChaptersRead = stats?.chaptersRead ?: uiState.continueReading.sumOf { it.chapterIndex + 1 }
     val username = viewModel.getUsername() ?: "Guest"
 
-    // Get cover images for tab backgrounds - Use multiple covers for collage effect
-    val animeCovers = uiState.continueWatching.take(3).mapNotNull { it.coverUrl } +
-            uiState.videoSections.flatMap { it.items }.take(5).mapNotNull { it.posterUrl }
-    val mangaCovers = uiState.continueReading.take(3).mapNotNull { it.coverUrl } +
-            uiState.mangaSections.flatMap { it.items }.take(5).mapNotNull { it.coverUrl }
-    val movieCovers = uiState.videoSections.flatMap { it.items }.take(8).mapNotNull { it.posterUrl }
+    // Use custom background images from drawable resources
 
     Column(
         modifier = Modifier
@@ -92,34 +88,34 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-                // ANIME LIST - Glossy Card with collage background
-                GlossyTabCardWithCollage(
+                // ANIME LIST - Custom background
+                GlossyTabCardWithImage(
                     modifier = Modifier.weight(1f),
                     title = "ANIME",
-                    coverUrls = animeCovers,
+                    backgroundRes = R.drawable.bg_anime,
                     isSelected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    accentColor = Color(0xFFFF6B6B) // Red accent for anime
+                    accentColor = Color(0xFFFF6B6B) // Red accent
                 )
 
-                // MANGA LIST - Glossy Card with collage background
-                GlossyTabCardWithCollage(
+                // MANGA LIST - Custom background
+                GlossyTabCardWithImage(
                     modifier = Modifier.weight(1f),
                     title = "MANGA",
-                    coverUrls = mangaCovers,
+                    backgroundRes = R.drawable.bg_manga,
                     isSelected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    accentColor = Color(0xFF4ECDC4) // Cyan accent for manga
+                    accentColor = Color(0xFF4ECDC4) // Cyan accent
                 )
 
-                // MOVIES/TV - Glossy Card with collage background
-                GlossyTabCardWithCollage(
+                // MOVIES/TV - Custom background
+                GlossyTabCardWithImage(
                     modifier = Modifier.weight(1f),
                     title = "MOVIES",
-                    coverUrls = movieCovers,
+                    backgroundRes = R.drawable.bg_movies,
                     isSelected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    accentColor = Color(0xFFFFD93D) // Yellow accent for movies
+                    accentColor = Color(0xFFFFD93D) // Yellow accent
                 )
         }
 
@@ -252,10 +248,10 @@ fun HomeScreen(
     }
 
 @Composable
-private fun GlossyTabCardWithCollage(
+private fun GlossyTabCardWithImage(
     modifier: Modifier = Modifier,
     title: String,
-    coverUrls: List<String>,
+    backgroundRes: Int,
     isSelected: Boolean,
     onClick: () -> Unit,
     accentColor: Color
@@ -274,49 +270,13 @@ private fun GlossyTabCardWithCollage(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Collage background with multiple covers
-            if (coverUrls.isNotEmpty()) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // Gradient background with accent color
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        accentColor.copy(alpha = 0.3f),
-                                        Color(0xFF1a1a1a)
-                                    )
-                                )
-                            )
-                    )
-                    // Show first cover as main background
-                    coverUrls.firstOrNull()?.let { url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                            alpha = 0.4f
-                        )
-                    }
-                }
-            } else {
-                // Sexy gradient fallback with accent color
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    accentColor.copy(alpha = 0.4f),
-                                    Color(0xFF2a2a2a),
-                                    Color(0xFF1a1a1a)
-                                )
-                            )
-                        )
-                )
-            }
+            // Custom background image
+            AsyncImage(
+                model = backgroundRes,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
 
             // Glass morphism overlay - semi-transparent dark
             Box(
