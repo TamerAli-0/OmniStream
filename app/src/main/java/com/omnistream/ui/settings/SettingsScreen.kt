@@ -597,24 +597,3 @@ private fun IconToggle(
     }
 }
 
-@HiltViewModel
-class SettingsViewModel @Inject constructor(
-    val authManager: AniListAuthManager,
-    private val userPreferences: com.omnistream.data.preferences.UserPreferences
-) : ViewModel() {
-    val colorScheme = userPreferences.colorSchemeFlow
-    val darkMode = userPreferences.darkModeFlow
-    val preferredTrackingService = userPreferences.preferredTrackingServiceFlow
-
-    fun setColorScheme(scheme: String) {
-        userPreferences.setColorScheme(scheme)
-    }
-
-    fun setDarkMode(mode: String) {
-        userPreferences.setDarkMode(mode)
-    }
-
-    fun setPreferredTrackingService(service: String) {
-        userPreferences.setPreferredTrackingService(service)
-    }
-}
