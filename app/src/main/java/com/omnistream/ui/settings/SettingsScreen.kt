@@ -29,7 +29,7 @@ import com.omnistream.data.anilist.AniListAuthManager
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ComprehensiveSettingsScreen(
+fun SettingsScreen(
     navController: NavController,
     authManager: AniListAuthManager,
     onLogout: () -> Unit
