@@ -31,8 +31,8 @@ class AniListAuthManager @Inject constructor(
         private const val KEY_AVATAR = "avatar"
         private const val KEY_TOKEN_EXPIRES = "token_expires"
 
-        // OAuth config
-        const val CLIENT_ID = "19588" // You'll need to register your app at https://anilist.co/settings/developer
+        // OAuth config - Registered at https://anilist.co/settings/developer
+        const val CLIENT_ID = "35573"
         const val REDIRECT_URI = "omnistream://anilist-callback"
         const val AUTH_URL = "https://anilist.co/api/v2/oauth/authorize"
         const val TOKEN_URL = "https://anilist.co/api/v2/oauth/token"

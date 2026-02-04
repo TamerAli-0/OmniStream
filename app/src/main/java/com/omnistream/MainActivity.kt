@@ -1,6 +1,8 @@
 package com.omnistream
 
 import android.os.Bundle
+import android.view.View
+import android.view.WindowInsetsController
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +18,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.omnistream.ui.MainViewModel
 import com.omnistream.ui.MainViewModel.StartDestination
 import com.omnistream.ui.navigation.OmniNavigation
@@ -34,6 +39,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
+
+        // Configure edge-to-edge with auto-hiding system bars
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+        windowInsetsController.apply {
+            // Make system bars transparent and overlay content
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            // Show bars by default (will hide in fullscreen content like video/reader)
+            show(WindowInsetsCompat.Type.systemBars())
+        }
 
         setContent {
             val colorSchemeKey by mainViewModel.colorScheme.collectAsState()
