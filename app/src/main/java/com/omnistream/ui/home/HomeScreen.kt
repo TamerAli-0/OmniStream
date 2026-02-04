@@ -49,57 +49,49 @@ fun HomeScreen(
         ?: uiState.mangaSections.firstOrNull()?.items?.firstOrNull()?.coverUrl
     val movieCover = uiState.videoSections.flatMap { it.items }.firstOrNull()?.posterUrl
 
-    Scaffold(
-        containerColor = Color(0xFF0a0a0a),
-        topBar = {
-            // Top bar with username and settings
-            Surface(
-                color = Color(0xFF121212),
-                shadowElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            username,
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Episodes: $totalEpisodesWatched • Chapters: $totalChaptersRead",
-                            color = Color.Gray,
-                            fontSize = 12.sp
-                        )
-                    }
-                    IconButton(onClick = { navController.navigate("settings") }) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0a0a0a))
+    ) {
+        // Top bar - NO elevation/shadow
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF0a0a0a))
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    username,
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Episodes: $totalEpisodesWatched • Chapters: $totalChaptersRead",
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
+            }
+            IconButton(onClick = { navController.navigate("settings") }) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
-    ) { padding ->
-        Column(
+
+        // GLOSSY TABS - STICK AT TOP
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // GLOSSY GLASS CARDS like Saikou - proper glassmorphism with REAL cover images
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
                 // ANIME LIST - Glossy Card with real cover
                 GlossyTabCard(
                     modifier = Modifier.weight(1f),
@@ -126,10 +118,10 @@ fun HomeScreen(
                     isSelected = selectedTab == 2,
                     onClick = { selectedTab = 2 }
                 )
-            }
+        }
 
-            // Content
-            LazyColumn(
+        // Content - scrollable
+        LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 20.dp)
             ) {
@@ -255,7 +247,6 @@ fun HomeScreen(
             }
         }
     }
-}
 
 @Composable
 private fun GlossyTabCard(
