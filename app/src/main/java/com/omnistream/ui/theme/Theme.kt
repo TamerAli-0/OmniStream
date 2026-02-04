@@ -27,7 +27,8 @@ enum class AppColorScheme(val label: String, val previewColor: Color) {
     ROSE("Rose", Color(0xFFEC407A)),
     MIDNIGHT("Midnight", Color(0xFF5C6BC0)),
     CRIMSON("Crimson", Color(0xFFEF5350)),
-    GOLD("Gold", Color(0xFFFFCA28));
+    GOLD("Gold", Color(0xFFFFCA28)),
+    SAIKOU("Saikou", Color(0xFFFF007F)); // Pink accent from Saikou/Dantotsu
 
     companion object {
         fun fromKey(key: String): AppColorScheme =
@@ -177,6 +178,41 @@ private fun goldDark() = darkColorScheme(
     errorContainer = Color(0xFF93000A), onErrorContainer = Color(0xFFFFDAD6)
 )
 
+/**
+ * Saikou/Dantotsu theme - Pink and Violet accents
+ * Based on actual Saikou color palette extracted from themes.xml and colors.xml
+ * Primary: #FF007F (vibrant magenta-pink)
+ * Secondary: #91A6FF (light periwinkle blue)
+ * Background: #212738 (dark blue-gray, not pure black)
+ */
+private fun saikouDark() = darkColorScheme(
+    primary = Color(0xFFFF007F), // pink_500 - vibrant magenta-pink
+    onPrimary = Color(0xFFEEEEEE), // bg_white - soft white
+    primaryContainer = Color(0xFFC50053), // pink_700 - deeper magenta
+    onPrimaryContainer = Color(0xFFEEEEEE),
+    secondary = Color(0xFF91A6FF), // violet_400 - light periwinkle
+    onSecondary = Color(0xFF212738), // bg_black - dark blue-gray
+    secondaryContainer = Color(0xFF3358FF), // violet_700 - rich royal blue
+    onSecondaryContainer = Color(0xFFEEEEEE),
+    tertiary = Color(0xFFFF5DAE), // pink_200 - lighter pink variant
+    onTertiary = Color.White,
+    background = Color(0xFF212738), // bg_black - NOT pure black, blue-gray
+    onBackground = Color(0xFFEEEEEE), // bg_white - soft white text
+    surface = Color(0xFF2A3142), // Slightly lighter than background for elevation
+    onSurface = Color(0xFFEEEEEE),
+    surfaceVariant = Color(0xFF323B4F), // Even lighter for high elevation
+    onSurfaceVariant = Color(0xFFCCCCCC),
+    surfaceContainer = Color(0xFF252D3F),
+    surfaceContainerHigh = Color(0xFF323B4F),
+    surfaceContainerLow = Color(0xFF1C2231),
+    outline = Color(0xFF938F99),
+    outlineVariant = Color(0xFF49454F),
+    error = Color(0xFFE63956), // fav - Saikou's favorite/error red
+    onError = Color.White,
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6)
+)
+
 // --- Light schemes per color ---
 
 private fun purpleLight() = lightColorScheme(
@@ -292,6 +328,37 @@ private fun goldLight() = lightColorScheme(
     errorContainer = Color(0xFFF9DEDC), onErrorContainer = Color(0xFF410E0B)
 )
 
+/**
+ * Saikou/Dantotsu light theme
+ * Primary: #FF007F (vibrant magenta-pink)
+ * Secondary: #3358FF (rich royal blue - darker variant for light mode)
+ * Background: #EEEEEE (soft white, not pure white)
+ */
+private fun saikouLight() = lightColorScheme(
+    primary = Color(0xFFFF007F), // pink_500 - vibrant pink
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFFF5DAE), // pink_200 - lighter for container
+    onPrimaryContainer = Color(0xFFC50053), // pink_700 - dark text on light container
+    secondary = Color(0xFF3358FF), // violet_700 - rich blue (darker for light mode)
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFF91A6FF), // violet_400 - lighter for container
+    onSecondaryContainer = Color(0xFF3358FF),
+    tertiary = Color(0xFFFF5DAE), // pink_200
+    onTertiary = Color.White,
+    background = Color(0xFFEEEEEE), // bg_white - soft white, NOT pure white
+    onBackground = Color(0xFF212738), // bg_black - dark text
+    surface = Color.White, // Pure white for cards in light mode
+    onSurface = Color(0xFF212738),
+    surfaceVariant = Color(0xFFF5F5F5), // Very light gray
+    onSurfaceVariant = Color(0xFF49454F),
+    outline = Color(0xFF79747E),
+    outlineVariant = Color(0xFFCAC4D0),
+    error = Color(0xFFE63956), // fav - Saikou's favorite/error red
+    onError = Color.White,
+    errorContainer = Color(0xFFF9DEDC),
+    onErrorContainer = Color(0xFF410E0B)
+)
+
 // --- Resolvers ---
 
 fun getColorScheme(scheme: AppColorScheme, isDark: Boolean): ColorScheme {
@@ -305,6 +372,7 @@ fun getColorScheme(scheme: AppColorScheme, isDark: Boolean): ColorScheme {
             AppColorScheme.MIDNIGHT -> midnightDark()
             AppColorScheme.CRIMSON -> crimsonDark()
             AppColorScheme.GOLD -> goldDark()
+            AppColorScheme.SAIKOU -> saikouDark()
         }
     } else {
         when (scheme) {
@@ -316,6 +384,7 @@ fun getColorScheme(scheme: AppColorScheme, isDark: Boolean): ColorScheme {
             AppColorScheme.MIDNIGHT -> midnightLight()
             AppColorScheme.CRIMSON -> crimsonLight()
             AppColorScheme.GOLD -> goldLight()
+            AppColorScheme.SAIKOU -> saikouLight()
         }
     }
 }
