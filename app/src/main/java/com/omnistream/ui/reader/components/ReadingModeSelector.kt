@@ -64,10 +64,14 @@ private fun ReadingModeItem(
     onClick: () -> Unit
 ) {
     val icon = when (mode) {
+        ReadingMode.WEBTOON -> Icons.Default.ChromeReaderMode
         ReadingMode.VERTICAL_CONTINUOUS -> Icons.Default.ViewAgenda
+        ReadingMode.PAGED_VERTICAL -> Icons.Default.ViewDay
         ReadingMode.HORIZONTAL_LTR -> Icons.Default.ArrowForward
         ReadingMode.HORIZONTAL_RTL -> Icons.Default.ArrowBack
-        ReadingMode.DUAL_PAGE -> Icons.Default.ChromeReaderMode
+        ReadingMode.DUAL_PAGE -> Icons.Default.Book
+        ReadingMode.FIT_WIDTH -> Icons.Default.FitScreen
+        ReadingMode.FIT_HEIGHT -> Icons.Default.AspectRatio
     }
 
     Surface(

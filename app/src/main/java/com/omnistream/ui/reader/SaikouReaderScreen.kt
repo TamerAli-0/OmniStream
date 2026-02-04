@@ -121,7 +121,17 @@ fun SaikouReaderScreen(
             else -> {
                 // Main reader content based on mode
                 when (readingMode) {
+                    ReadingMode.WEBTOON,
                     ReadingMode.VERTICAL_CONTINUOUS -> {
+                        VerticalReader(
+                            pages = uiState.pages,
+                            baseUrl = uiState.referer,
+                            isOffline = uiState.isOffline,
+                            listState = verticalListState
+                        )
+                    }
+
+                    ReadingMode.PAGED_VERTICAL -> {
                         VerticalReader(
                             pages = uiState.pages,
                             baseUrl = uiState.referer,
@@ -156,6 +166,17 @@ fun SaikouReaderScreen(
                             baseUrl = uiState.referer,
                             isOffline = uiState.isOffline,
                             pagerState = pagerState
+                        )
+                    }
+
+                    ReadingMode.FIT_WIDTH,
+                    ReadingMode.FIT_HEIGHT -> {
+                        HorizontalReader(
+                            pages = uiState.pages,
+                            baseUrl = uiState.referer,
+                            isOffline = uiState.isOffline,
+                            pagerState = pagerState,
+                            reverseLayout = false
                         )
                     }
                 }
