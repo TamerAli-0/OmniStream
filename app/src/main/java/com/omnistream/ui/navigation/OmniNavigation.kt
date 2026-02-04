@@ -47,6 +47,7 @@ import com.omnistream.ui.reader.ReaderScreen
 import com.omnistream.ui.reader.SaikouReaderScreen
 import com.omnistream.ui.search.SearchScreen
 import com.omnistream.ui.settings.SettingsScreen
+import com.omnistream.ui.auth.AniListLoginScreen
 
 /**
  * Navigation routes
@@ -93,10 +94,9 @@ sealed class Screen(
     )
 }
 
-// Bottom nav items
+// Bottom nav items - Browse merged into Home
 val bottomNavItems = listOf(
     Screen.Home,
-    Screen.Browse,
     Screen.Search,
     Screen.Library,
     Screen.Downloads
@@ -236,6 +236,13 @@ fun OmniNavigation(
                             popUpTo(0) { inclusive = true }
                         }
                     }
+                )
+            }
+
+            // AniList Login
+            composable("anilist_login") {
+                AniListLoginScreen(
+                    navController = navController
                 )
             }
 

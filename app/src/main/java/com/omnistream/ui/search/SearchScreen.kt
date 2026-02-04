@@ -290,7 +290,7 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFF0a0a0a))
     ) {
         // Search Header
         Column(
@@ -299,8 +299,8 @@ fun SearchScreen(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                            Color.Transparent
+                            Color(0xFF121212),
+                            Color(0xFF0a0a0a)
                         )
                     )
                 )

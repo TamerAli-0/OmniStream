@@ -36,6 +36,12 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
 
+    // Get stats from AniList or watch history
+    val stats = uiState.anilistStats
+    val totalEpisodesWatched = stats?.episodesWatched ?: uiState.continueWatching.size
+    val totalChaptersRead = stats?.chaptersRead ?: uiState.continueReading.sumOf { it.chapterIndex + 1 }
+    val username = viewModel.getUsername() ?: "Guest"
+
     Scaffold(
         containerColor = Color(0xFF0a0a0a),
         topBar = {
@@ -53,13 +59,13 @@ fun HomeScreen(
                 ) {
                     Column {
                         Text(
-                            "brahmkshatriya",
+                            username,
                             color = Color.White,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "Chapters Read 1789",
+                            "Episodes: $totalEpisodesWatched • Chapters: $totalChaptersRead",
                             color = Color.Gray,
                             fontSize = 12.sp
                         )
@@ -80,41 +86,215 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Glossy tabs ANIME LIST / MANGA LIST
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = Color(0xFF1a1a1a),
-                contentColor = MaterialTheme.colorScheme.primary,
-                indicator = { tabPositions ->
-                    Box(
-                        Modifier
-                            .tabIndicatorOffset(tabPositions[selectedTab])
-                            .height(3.dp)
-                            .background(MaterialTheme.colorScheme.primary)
-                    )
-                }
+            // GLOSSY GLASS CARDS like Saikou - proper glassmorphism
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Tab(
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 }
+                // ANIME LIST - Glossy Card
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(90.dp)
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            spotColor = if (selectedTab == 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                       else Color.Black.copy(alpha = 0.5f)
+                        )
+                        .clickable { selectedTab = 0 },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                 ) {
-                    Text(
-                        "ANIME LIST",
-                        modifier = Modifier.padding(vertical = 16.dp),
-                        fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 14.sp
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Background image with blur effect
+                        val animeBackground = uiState.continueWatching.firstOrNull()?.coverUrl
+                            ?: uiState.favoriteAnime.firstOrNull()?.coverUrl
+
+                        if (animeBackground != null) {
+                            AsyncImage(
+                                model = animeBackground,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                Color(0xFF2a2a2a),
+                                                Color(0xFF1a1a1a)
+                                            )
+                                        )
+                                    )
+                            )
+                        }
+
+                        // Glass morphism overlay - semi-transparent with gradient
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Black.copy(alpha = 0.6f),
+                                            Color.Black.copy(alpha = 0.8f)
+                                        )
+                                    )
+                                )
+                        )
+
+                        // Shine effect on selected
+                        if (selectedTab == 0) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                                Color.Transparent
+                                            )
+                                        )
+                                    )
+                            )
+                        }
+
+                        // Text
+                        Text(
+                            "ANIME LIST",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = if (selectedTab == 0) FontWeight.ExtraBold else FontWeight.SemiBold,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+
+                        // Border glow on selected
+                        if (selectedTab == 0) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color.Transparent,
+                                                MaterialTheme.colorScheme.primary,
+                                                Color.Transparent
+                                            )
+                                        )
+                                    )
+                                    .align(Alignment.BottomCenter)
+                            )
+                        }
+                    }
                 }
-                Tab(
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 }
+
+                // MANGA LIST - Glossy Card
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(90.dp)
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            spotColor = if (selectedTab == 1) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                       else Color.Black.copy(alpha = 0.5f)
+                        )
+                        .clickable { selectedTab = 1 },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                 ) {
-                    Text(
-                        "MANGA LIST",
-                        modifier = Modifier.padding(vertical = 16.dp),
-                        fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 14.sp
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Background image
+                        val mangaBackground = uiState.continueReading.firstOrNull()?.coverUrl
+                            ?: uiState.favoriteManga.firstOrNull()?.coverUrl
+
+                        if (mangaBackground != null) {
+                            AsyncImage(
+                                model = mangaBackground,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                Color(0xFF2a2a2a),
+                                                Color(0xFF1a1a1a)
+                                            )
+                                        )
+                                    )
+                            )
+                        }
+
+                        // Glass morphism overlay
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Black.copy(alpha = 0.6f),
+                                            Color.Black.copy(alpha = 0.8f)
+                                        )
+                                    )
+                                )
+                        )
+
+                        // Shine effect on selected
+                        if (selectedTab == 1) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                                Color.Transparent
+                                            )
+                                        )
+                                    )
+                            )
+                        }
+
+                        // Text
+                        Text(
+                            "MANGA LIST",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = if (selectedTab == 1) FontWeight.ExtraBold else FontWeight.SemiBold,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+
+                        // Border glow on selected
+                        if (selectedTab == 1) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color.Transparent,
+                                                MaterialTheme.colorScheme.primary,
+                                                Color.Transparent
+                                            )
+                                        )
+                                    )
+                                    .align(Alignment.BottomCenter)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -154,6 +334,23 @@ fun HomeScreen(
                                 Spacer(Modifier.height(24.dp))
                             }
                         }
+
+                        // Discovery sections - Video (Anime/Movies)
+                        uiState.videoSections.take(3).forEach { section ->
+                            item {
+                                SectionTitle(section.title)
+                                Spacer(Modifier.height(12.dp))
+                            }
+                            item {
+                                VideoCardRow(
+                                    items = section.items.take(10),
+                                    onClick = { video ->
+                                        navController.navigate("video/${section.sourceId}/${video.id}")
+                                    }
+                                )
+                                Spacer(Modifier.height(24.dp))
+                            }
+                        }
                     }
                     1 -> {
                         // Continue Reading
@@ -182,12 +379,210 @@ fun HomeScreen(
                                     items = uiState.favoriteManga.map { it.toMediaItem() },
                                     onClick = { navController.navigate("manga/${it.sourceId}/${it.id}") }
                                 )
+                                Spacer(Modifier.height(24.dp))
+                            }
+                        }
+
+                        // Discovery sections - Manga
+                        uiState.mangaSections.take(3).forEach { section ->
+                            item {
+                                SectionTitle(section.title)
+                                Spacer(Modifier.height(12.dp))
+                            }
+                            item {
+                                MangaCardRow(
+                                    items = section.items.take(10),
+                                    onClick = { manga ->
+                                        navController.navigate("manga/${section.sourceId}/${manga.id}")
+                                    }
+                                )
+                                Spacer(Modifier.height(24.dp))
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun VideoCardRow(
+    items: List<com.omnistream.domain.model.Video>,
+    onClick: (com.omnistream.domain.model.Video) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(items) { video ->
+            VideoGlossyCard(video, onClick)
+        }
+    }
+}
+
+@Composable
+private fun MangaCardRow(
+    items: List<com.omnistream.domain.model.Manga>,
+    onClick: (com.omnistream.domain.model.Manga) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        items(items) { manga ->
+            MangaGlossyCard(manga, onClick)
+        }
+    }
+}
+
+@Composable
+private fun VideoGlossyCard(
+    video: com.omnistream.domain.model.Video,
+    onClick: (com.omnistream.domain.model.Video) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(135.dp)
+            .clickable { onClick(video) }
+    ) {
+        Card(
+            modifier = Modifier
+                .width(135.dp)
+                .height(195.dp)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = RoundedCornerShape(16.dp),
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                    ambientColor = Color.Black.copy(alpha = 0.6f)
+                ),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = video.posterUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.7f)
+                                ),
+                                startY = 80f
+                            )
+                        )
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            text = video.title,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 16.sp
+        )
+    }
+}
+
+@Composable
+private fun MangaGlossyCard(
+    manga: com.omnistream.domain.model.Manga,
+    onClick: (com.omnistream.domain.model.Manga) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(135.dp)
+            .clickable { onClick(manga) }
+    ) {
+        Card(
+            modifier = Modifier
+                .width(135.dp)
+                .height(195.dp)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = RoundedCornerShape(16.dp),
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                    ambientColor = Color.Black.copy(alpha = 0.6f)
+                ),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = manga.coverUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.7f)
+                                ),
+                                startY = 80f
+                            )
+                        )
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            text = manga.title,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 16.sp
+        )
     }
 }
 
@@ -224,21 +619,22 @@ private fun GlossyCard(
 ) {
     Column(
         modifier = Modifier
-            .width(130.dp)
+            .width(135.dp)
             .clickable { onClick(item) }
     ) {
-        // Card with massive shadow and elevation
+        // Card with MASSIVE shadow and glossy effects
         Card(
             modifier = Modifier
-                .width(130.dp)
-                .height(185.dp)
+                .width(135.dp)
+                .height(195.dp)
                 .shadow(
-                    elevation = 12.dp,
-                    shape = RoundedCornerShape(12.dp),
-                    spotColor = Color.Black.copy(alpha = 0.5f)
+                    elevation = 16.dp,
+                    shape = RoundedCornerShape(16.dp),
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                    ambientColor = Color.Black.copy(alpha = 0.6f)
                 ),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1a1a1a))
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // Cover image
@@ -249,7 +645,22 @@ private fun GlossyCard(
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Gradient overlay
+                // Glass shine effect on top
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                // Gradient overlay for text readability
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

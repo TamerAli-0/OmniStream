@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -19,10 +20,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun AniListLoginScreen(
     navController: NavController,
-    authManager: AniListAuthManager,
-    aniListApi: AniListApi,
-    onSuccess: () -> Unit
+    onSuccess: () -> Unit = { navController.popBackStack() }
 ) {
+    val context = LocalContext.current
+    val authManager = remember { AniListAuthManager(context) }
+    val httpClient = remember { com.omnistream.core.network.OmniHttpClient() }
+    val aniListApi = remember { AniListApi(httpClient, authManager) }
     val scope = rememberCoroutineScope()
 
     Scaffold(
@@ -48,22 +51,39 @@ fun AniListLoginScreen(
 
                     webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
-                            if (url.startsWith(AniListAuthManager.REDIRECT_URI)) {
-                                // Extract token from URL fragment
-                                val token = url.substringAfter("access_token=")
-                                    .substringBefore("&")
+                            android.util.Log.d("AniListLogin", "URL intercepted: $url")
 
-                                if (token.isNotEmpty()) {
+                            if (url.startsWith(AniListAuthManager.REDIRECT_URI)) {
+                                // Extract token from URL fragment (after # or ?)
+                                val token = when {
+                                    url.contains("#access_token=") ->
+                                        url.substringAfter("#access_token=").substringBefore("&")
+                                    url.contains("?access_token=") ->
+                                        url.substringAfter("?access_token=").substringBefore("&")
+                                    url.contains("access_token=") ->
+                                        url.substringAfter("access_token=").substringBefore("&")
+                                    else -> ""
+                                }
+
+                                android.util.Log.d("AniListLogin", "Extracted token: ${token.take(10)}...")
+
+                                if (token.isNotEmpty() && token != url) {
                                     authManager.saveAccessToken(token)
 
                                     // Fetch user info
                                     scope.launch {
-                                        val user = aniListApi.getCurrentUser()
-                                        if (user != null) {
-                                            authManager.saveUserInfo(user.id, user.name, user.avatar)
+                                        try {
+                                            val user = aniListApi.getCurrentUser()
+                                            if (user != null) {
+                                                authManager.saveUserInfo(user.id, user.name, user.avatar)
+                                                android.util.Log.d("AniListLogin", "User info saved: ${user.name}")
+                                            }
+                                            onSuccess()
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("AniListLogin", "Error fetching user info", e)
+                                            // Still call onSuccess since we have the token
+                                            onSuccess()
                                         }
-                                        onSuccess()
-                                        navController.popBackStack()
                                     }
                                 }
                                 return true

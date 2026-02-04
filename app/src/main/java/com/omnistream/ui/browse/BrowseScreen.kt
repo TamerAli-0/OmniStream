@@ -69,7 +69,7 @@ fun BrowseScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(Color(0xFF0a0a0a))
     ) {
         TopAppBar(
             title = {
@@ -77,7 +77,7 @@ fun BrowseScreen(
                     "Browse",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground
+                    color = Color.White
                 )
             },
             actions = {
@@ -85,17 +85,17 @@ fun BrowseScreen(
                     onClick = { viewModel.refresh() },
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
+                        .background(Color(0xFF1a1a1a))
                 ) {
                     Icon(
                         Icons.Default.Refresh,
                         contentDescription = "Refresh",
-                        tint = MaterialTheme.colorScheme.onSurface
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent
+                containerColor = Color(0xFF121212)
             ),
             modifier = Modifier.padding(horizontal = 8.dp)
         )
@@ -257,9 +257,12 @@ private fun MangaBrowseCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = Color(0xFF1a1a1a)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 16.dp,
+            pressedElevation = 12.dp
+        )
     ) {
         Column {
             Box(
@@ -293,6 +296,21 @@ private fun MangaBrowseCard(
                         }
                     }
                 }
+
+                // Glass shine effect
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
 
                 // Gradient overlay
                 Box(
@@ -360,9 +378,12 @@ private fun VideoBrowseCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = Color(0xFF1a1a1a)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 16.dp,
+            pressedElevation = 12.dp
+        )
     ) {
         Column {
             Box(
@@ -396,6 +417,21 @@ private fun VideoBrowseCard(
                         }
                     }
                 }
+
+                // Glass shine effect
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
 
                 // Gradient overlay
                 Box(

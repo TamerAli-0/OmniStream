@@ -23,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val sourceManager: SourceManager,
-    private val watchHistoryRepository: WatchHistoryRepository
+    private val watchHistoryRepository: WatchHistoryRepository,
+    private val authManager: com.omnistream.data.anilist.AniListAuthManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -31,6 +32,8 @@ class HomeViewModel @Inject constructor(
 
     // Cache for source health status
     private val sourceHealth = mutableMapOf<String, SourceHealth>()
+
+    fun getUsername(): String? = authManager.getUsername()
 
     init {
         // Observe continue rows (reactive, auto-updates when progress changes)
@@ -45,6 +48,31 @@ class HomeViewModel @Inject constructor(
             }
         }
         loadHomeContent()
+        loadAniListStats()
+    }
+
+    private fun loadAniListStats() {
+        if (!authManager.isLoggedIn()) return
+
+        viewModelScope.launch {
+            try {
+                // For now, calculate from watch history
+                // TODO: Fetch real stats from AniList API
+                kotlinx.coroutines.flow.combine(
+                    watchHistoryRepository.getContinueWatching(),
+                    watchHistoryRepository.getContinueReading()
+                ) { watching, reading ->
+                    AniListStats(
+                        episodesWatched = watching.size,
+                        chaptersRead = reading.size
+                    )
+                }.collect { stats ->
+                    _uiState.value = _uiState.value.copy(anilistStats = stats)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeViewModel", "Failed to load AniList stats", e)
+            }
+        }
     }
 
     fun deleteFromHistory(id: String) {
@@ -337,7 +365,15 @@ data class HomeUiState(
     val favoriteAnime: List<WatchHistoryEntity> = emptyList(),
     val favoriteManga: List<WatchHistoryEntity> = emptyList(),
     val trendingAnime: List<WatchHistoryEntity> = emptyList(),
-    val trendingManga: List<WatchHistoryEntity> = emptyList()
+    val trendingManga: List<WatchHistoryEntity> = emptyList(),
+    val anilistStats: AniListStats? = null
+)
+
+data class AniListStats(
+    val episodesWatched: Int = 0,
+    val chaptersRead: Int = 0,
+    val animeCount: Int = 0,
+    val mangaCount: Int = 0
 )
 
 data class MangaSection(

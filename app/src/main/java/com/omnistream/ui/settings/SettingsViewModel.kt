@@ -33,12 +33,19 @@ class SettingsViewModel @Inject constructor(
     val darkMode = userPreferences.darkMode
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "dark")
 
+    val preferredTrackingService = userPreferences.preferredTrackingService
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "anilist")
+
     fun setColorScheme(scheme: String) {
         viewModelScope.launch { userPreferences.setColorScheme(scheme) }
     }
 
     fun setDarkMode(mode: String) {
         viewModelScope.launch { userPreferences.setDarkMode(mode) }
+    }
+
+    fun setPreferredTrackingService(service: String) {
+        viewModelScope.launch { userPreferences.setPreferredTrackingService(service) }
     }
 
     fun logout(onLoggedOut: () -> Unit) {

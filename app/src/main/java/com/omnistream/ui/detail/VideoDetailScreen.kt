@@ -79,7 +79,11 @@ fun VideoDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0a0a0a))
+    ) {
         TopAppBar(
             title = {
                 if (uiState.isSelectionMode) {
@@ -501,16 +505,21 @@ private fun EpisodeItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(12.dp),
+                spotColor = Color.Black.copy(alpha = 0.4f)
+            )
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected)
-                MaterialTheme.colorScheme.primaryContainer
+                Color(0xFF2a2a2a)
             else
-                MaterialTheme.colorScheme.surfaceContainer
+                Color(0xFF1a1a1a)
         )
     ) {
         Row(

@@ -77,6 +77,8 @@ class AniListAuthManager @Inject constructor(
     }
 
     fun getAuthUrl(): String {
-        return "$AUTH_URL?client_id=$CLIENT_ID&redirect_uri=$REDIRECT_URI&response_type=token"
+        // URL encode the redirect URI
+        val encodedRedirectUri = java.net.URLEncoder.encode(REDIRECT_URI, "UTF-8")
+        return "$AUTH_URL?client_id=$CLIENT_ID&redirect_uri=$encodedRedirectUri&response_type=token"
     }
 }
