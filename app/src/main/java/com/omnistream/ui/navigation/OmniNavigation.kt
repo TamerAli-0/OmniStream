@@ -149,7 +149,7 @@ fun OmniNavigation(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = if (showBottomNav) 80.dp else 0.dp)
+                .padding(bottom = if (showBottomNav) 110.dp else 0.dp)
         ) {
             NavHost(
                 navController = navController,
@@ -351,7 +351,7 @@ fun OmniNavigation(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
                         .height(70.dp)
                         .align(Alignment.BottomCenter),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(35.dp),
