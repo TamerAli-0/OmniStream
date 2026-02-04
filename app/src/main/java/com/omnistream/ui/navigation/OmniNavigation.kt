@@ -67,6 +67,7 @@ import com.omnistream.ui.reader.SaikouReaderScreen
 import com.omnistream.ui.search.SearchScreen
 import com.omnistream.ui.settings.SettingsScreen
 import com.omnistream.ui.auth.AniListLoginScreen
+import com.omnistream.ui.utils.hideSystemBarsOnInteraction
 
 /**
  * Navigation routes
@@ -159,6 +160,7 @@ fun OmniNavigation(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = if (showBottomNav) 120.dp else 0.dp)
+                .hideSystemBarsOnInteraction() // Hide phone nav on scroll/tap
         ) {
             NavHost(
                 navController = navController,
