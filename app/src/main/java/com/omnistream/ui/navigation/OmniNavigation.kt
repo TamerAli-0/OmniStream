@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -374,31 +375,38 @@ fun OmniNavigation(
                             currentDestination?.hierarchy?.any { it.route == screen.route } == true
                         }.coerceAtLeast(0)
 
-                        // Animated indicator position
+                        // Calculate proper spacing for 5 items
+                        val screenWidth = Modifier.fillMaxWidth()
+                        val itemCount = bottomNavItems.size
+
+                        // Animated indicator position (fluid water-like motion)
                         val indicatorOffset by animateFloatAsState(
                             targetValue = selectedIndex.toFloat(),
                             animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessLow
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessMediumLow
                             ),
                             label = "indicator"
                         )
 
-                        // Animated pill indicator
-                        Box(
+                        // Animated pill indicator (water bubble)
+                        BoxWithConstraints(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                                .align(Alignment.Center)
                         ) {
-                            val itemWidth = (Modifier.fillMaxWidth().toString().length / bottomNavItems.size).toFloat()
+                            val totalWidth = maxWidth - 24.dp // Account for padding
+                            val itemWidth = totalWidth / itemCount
+                            val bubbleWidth = 65.dp
+                            val startOffset = (itemWidth - bubbleWidth) / 2
 
                             Surface(
                                 modifier = Modifier
-                                    .width(70.dp)
-                                    .height(60.dp)
-                                    .offset(x = (indicatorOffset * 73).dp),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                                    .width(bubbleWidth)
+                                    .height(56.dp)
+                                    .offset(x = startOffset + (itemWidth * indicatorOffset)),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.95f)
                             ) {}
                         }
 
