@@ -31,11 +31,6 @@ import javax.inject.Inject
  * - Backup & Sync
  * - Advanced (Data Saver, Cache, Update Check)
  */
-@HiltViewModel
-class SettingsViewModel @Inject constructor(
-    val authManager: AniListAuthManager
-) : ViewModel()
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(

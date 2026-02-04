@@ -2,6 +2,7 @@ package com.omnistream.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.omnistream.data.anilist.AniListAuthManager
 import com.omnistream.data.local.UserPreferences
 import com.omnistream.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,7 +14,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    val authManager: AniListAuthManager
 ) : ViewModel() {
 
     val userName = userPreferences.userName
