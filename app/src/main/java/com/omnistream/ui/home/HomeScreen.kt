@@ -299,7 +299,7 @@ private fun VideoSectionRow(
                 text = section.title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.primary // Saikou uses accent color for headers
             )
         }
 
@@ -336,7 +336,7 @@ private fun MangaSectionRow(
                 text = section.title,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.secondary // Use secondary (violet) for variety
             )
         }
 
@@ -365,11 +365,14 @@ private fun VideoCard(
         modifier = Modifier
             .width(145.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(16.dp), // Saikou uses 16dp corner radius
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp, // Subtle elevation like Saikou
+            pressedElevation = 8.dp
+        )
     ) {
         Column {
             // Poster with gradient overlay
