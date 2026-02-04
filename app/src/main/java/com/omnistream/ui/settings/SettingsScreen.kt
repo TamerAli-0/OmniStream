@@ -47,6 +47,12 @@ fun SettingsScreen(
     val anilistUsername = authManager.getUsername()
     val anilistAvatar = authManager.getAvatar()
 
+    // Theme state
+    val colorScheme by viewModel.colorScheme.collectAsState()
+    val darkMode by viewModel.darkMode.collectAsState()
+    var showColorPicker by remember { mutableStateOf(false) }
+    var showThemePicker by remember { mutableStateOf(false) }
+
     Scaffold(
         containerColor = Color(0xFF0a0a0a),
         topBar = {
@@ -130,8 +136,8 @@ fun SettingsScreen(
             // ==================== APPEARANCE ====================
             item { SectionTitle("Appearance") }
 
-            item { SettingItem(Icons.Default.Palette, "Theme", "System default", {}) }
-            item { SettingItem(Icons.Default.ColorLens, "Accent Color", "Pink (Saikou style)", {}) }
+            item { SettingItem(Icons.Default.Palette, "Theme", darkMode.replaceFirstChar { it.uppercase() }, { showThemePicker = true }) }
+            item { SettingItem(Icons.Default.ColorLens, "Accent Color", colorScheme.replaceFirstChar { it.uppercase() }, { showColorPicker = true }) }
             item { SettingToggle(Icons.Default.DarkMode, "AMOLED Mode", "Pure black background for OLED screens", false, {}) }
             item { SettingToggle(Icons.Default.Contrast, "Material You", "Dynamic colors from wallpaper", true, {}) }
             item { SettingItem(Icons.Default.GridView, "Grid Size", "3 columns", {}) }
@@ -247,6 +253,30 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    // Color Picker Dialog
+    if (showColorPicker) {
+        ColorPickerDialog(
+            currentScheme = colorScheme,
+            onSchemeSelected = {
+                viewModel.setColorScheme(it)
+                showColorPicker = false
+            },
+            onDismiss = { showColorPicker = false }
+        )
+    }
+
+    // Theme Picker Dialog
+    if (showThemePicker) {
+        ThemePickerDialog(
+            currentMode = darkMode,
+            onModeSelected = {
+                viewModel.setDarkMode(it)
+                showThemePicker = false
+            },
+            onDismiss = { showThemePicker = false }
+        )
     }
 }
 
@@ -429,4 +459,80 @@ private fun SettingToggle(
             }
         }
     }
+}
+
+@Composable
+private fun ColorPickerDialog(
+    currentScheme: String,
+    onSchemeSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val schemes = listOf("purple", "ocean", "emerald", "sunset", "rose", "midnight", "crimson", "gold", "saikou")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Choose Color Scheme") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                schemes.forEach { scheme ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSchemeSelected(scheme) }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = scheme == currentScheme,
+                            onClick = { onSchemeSelected(scheme) }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(scheme.replaceFirstChar { it.uppercase() })
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+private fun ThemePickerDialog(
+    currentMode: String,
+    onModeSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val modes = listOf("dark", "light", "system")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Choose Theme") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                modes.forEach { mode ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onModeSelected(mode) }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = mode == currentMode,
+                            onClick = { onModeSelected(mode) }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(mode.replaceFirstChar { it.uppercase() })
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
