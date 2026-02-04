@@ -380,7 +380,7 @@ fun OmniNavigation(
                         .height(80.dp)
                         .align(Alignment.BottomCenter),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(35.dp),
-                    color = Color.White.copy(alpha = 0.15f),
+                    color = Color.White.copy(alpha = 0.35f), // Increased from 0.15f for better visibility
                     shadowElevation = 12.dp,
                     tonalElevation = 8.dp
                 ) {

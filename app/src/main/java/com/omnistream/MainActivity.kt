@@ -61,8 +61,10 @@ class MainActivity : ComponentActivity() {
         windowInsetsController.apply {
             // Make system bars transparent and overlay content
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            // Show bars by default (will hide in fullscreen content like video/reader)
-            show(WindowInsetsCompat.Type.systemBars())
+            // Hide nav buttons by default - swipe up to show temporarily
+            hide(WindowInsetsCompat.Type.navigationBars())
+            // Keep status bar visible
+            show(WindowInsetsCompat.Type.statusBars())
         }
 
         setContent {
