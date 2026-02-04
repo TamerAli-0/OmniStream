@@ -410,17 +410,23 @@ fun OmniNavigation(
                                 .fillMaxWidth()
                                 .align(Alignment.Center)
                         ) {
-                            val totalWidth = maxWidth - 24.dp // Account for padding
-                            val itemWidth = totalWidth / itemCount
-                            val bubbleWidth = 64.dp
-                            val startOffset = (itemWidth - bubbleWidth) / 2 + 10.dp
+                            // Calculate item positions to match Row's SpaceEvenly layout
+                            val rowHorizontalPadding = 12.dp // Row's horizontal padding
+                            val availableWidth = maxWidth - (rowHorizontalPadding * 2)
+                            val itemWidth = availableWidth / itemCount
+                            val bubbleWidth = 60.dp
+
+                            // Position: (item space * index) + center within item + row padding offset
+                            val bubbleOffset = (itemWidth * indicatorOffset) +
+                                              ((itemWidth - bubbleWidth) / 2) +
+                                              rowHorizontalPadding
 
                             Surface(
                                 modifier = Modifier
                                     .width(bubbleWidth)
                                     .height(56.dp)
-                                    .offset(x = startOffset + (itemWidth * indicatorOffset)),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+                                    .offset(x = bubbleOffset),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp),
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.95f)
                             ) {}
                         }
