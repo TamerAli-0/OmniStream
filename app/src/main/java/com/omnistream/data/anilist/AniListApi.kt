@@ -35,6 +35,11 @@ class AniListApi @Inject constructor(
                     avatar {
                         large
                     }
+                    bannerImage
+                    about
+                    options {
+                        profileColor
+                    }
                 }
             }
         """.trimIndent()
@@ -55,7 +60,10 @@ class AniListApi @Inject constructor(
             AniListUser(
                 id = viewer["id"]?.toString()?.toIntOrNull() ?: 0,
                 name = viewer["name"]?.toString()?.trim('"') ?: "",
-                avatar = viewer["avatar"]?.jsonObject?.get("large")?.toString()?.trim('"')
+                avatar = viewer["avatar"]?.jsonObject?.get("large")?.toString()?.trim('"'),
+                bannerImage = viewer["bannerImage"]?.toString()?.trim('"'),
+                about = viewer["about"]?.toString()?.trim('"'),
+                profileColor = viewer["options"]?.jsonObject?.get("profileColor")?.toString()?.trim('"')
             )
         } catch (e: Exception) {
             android.util.Log.e("AniListApi", "Failed to get current user", e)
@@ -250,7 +258,10 @@ class AniListApi @Inject constructor(
 data class AniListUser(
     val id: Int,
     val name: String,
-    val avatar: String?
+    val avatar: String?,
+    val bannerImage: String? = null,
+    val about: String? = null,
+    val profileColor: String? = null
 )
 
 @Serializable

@@ -45,20 +45,51 @@ fun HomeScreen(
     val totalEpisodesWatched = stats?.episodesWatched ?: uiState.continueWatching.size
     val totalChaptersRead = stats?.chaptersRead ?: uiState.continueReading.sumOf { it.chapterIndex + 1 }
     val username = viewModel.getUsername() ?: "Guest"
+    val bannerUrl = stats?.user?.bannerImage
 
     // Use custom background images from drawable resources
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0a0a0a))
+            .background(MaterialTheme.colorScheme.background)
     ) {
+        // AniList Banner (if available)
+        if (bannerUrl != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
+                AsyncImage(
+                    model = bannerUrl,
+                    contentDescription = "Profile Banner",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                // Gradient overlay for readability
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
+                                    MaterialTheme.colorScheme.background
+                                )
+                            )
+                        )
+                )
+            }
+        }
+
         // Top bar - NO elevation/shadow
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF0a0a0a))
-                .windowInsetsPadding(WindowInsets.statusBars)
+                .background(MaterialTheme.colorScheme.background)
+                .windowInsetsPadding(if (bannerUrl == null) WindowInsets.statusBars else WindowInsets(0.dp))
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -66,13 +97,13 @@ fun HomeScreen(
             Column {
                 Text(
                     username,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     "Episodes: $totalEpisodesWatched • Chapters: $totalChaptersRead",
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp
                 )
             }

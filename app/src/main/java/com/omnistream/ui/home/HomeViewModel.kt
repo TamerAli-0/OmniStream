@@ -24,7 +24,8 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val watchHistoryRepository: WatchHistoryRepository,
-    private val authManager: com.omnistream.data.anilist.AniListAuthManager
+    private val authManager: com.omnistream.data.anilist.AniListAuthManager,
+    private val anilistApi: com.omnistream.data.anilist.AniListApi
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -56,15 +57,18 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // For now, calculate from watch history
-                // TODO: Fetch real stats from AniList API
+                // Fetch user info from AniList (includes banner)
+                val anilistUser = anilistApi.getCurrentUser()
+
+                // Calculate from watch history
                 kotlinx.coroutines.flow.combine(
                     watchHistoryRepository.getContinueWatching(),
                     watchHistoryRepository.getContinueReading()
                 ) { watching, reading ->
                     AniListStats(
                         episodesWatched = watching.size,
-                        chaptersRead = reading.size
+                        chaptersRead = reading.size,
+                        user = anilistUser
                     )
                 }.collect { stats ->
                     _uiState.value = _uiState.value.copy(anilistStats = stats)
@@ -373,7 +377,8 @@ data class AniListStats(
     val episodesWatched: Int = 0,
     val chaptersRead: Int = 0,
     val animeCount: Int = 0,
-    val mangaCount: Int = 0
+    val mangaCount: Int = 0,
+    val user: com.omnistream.data.anilist.AniListUser? = null
 )
 
 data class MangaSection(
