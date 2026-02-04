@@ -55,16 +55,25 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
-        // Configure edge-to-edge with auto-hiding system bars
+        // Configure true edge-to-edge - content goes under system bars
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        // Make status bar and nav bar fully transparent
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.apply {
             // Make system bars transparent and overlay content
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             // Hide nav buttons by default - swipe up to show temporarily
             hide(WindowInsetsCompat.Type.navigationBars())
-            // Keep status bar visible
+            // Keep status bar visible but transparent
             show(WindowInsetsCompat.Type.statusBars())
+
+            // Light status bar icons (white text) for dark theme
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
         }
 
         setContent {
