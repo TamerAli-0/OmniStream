@@ -31,6 +31,15 @@ class BrowseViewModel @Inject constructor(
     fun setFilter(filterType: String?) {
         if (currentFilter != filterType) {
             currentFilter = filterType
+            // Clear old content when filter changes
+            _uiState.value = _uiState.value.copy(
+                sources = emptyList(),
+                selectedSourceIndex = -1,
+                mangaItems = emptyList(),
+                videoItems = emptyList(),
+                isLoading = false,
+                error = null
+            )
             loadSources()
         }
     }
@@ -41,9 +50,14 @@ class BrowseViewModel @Inject constructor(
 
         val allSources = mutableListOf<SourceInfo>()
 
+        android.util.Log.d("BrowseViewModel", "Loading sources with filter: $currentFilter")
+        android.util.Log.d("BrowseViewModel", "Available manga sources: ${mangaSources.map { it.name }}")
+        android.util.Log.d("BrowseViewModel", "Available video sources: ${videoSources.map { it.name }}")
+
         when (currentFilter) {
             "manga" -> {
                 // Only manga sources
+                android.util.Log.d("BrowseViewModel", "Filter: manga - adding only manga sources")
                 mangaSources.forEach { source ->
                     allSources.add(SourceInfo(
                         id = source.id,
@@ -54,8 +68,11 @@ class BrowseViewModel @Inject constructor(
             }
             "anime" -> {
                 // Only anime video sources (check for anime keywords in name/id)
+                android.util.Log.d("BrowseViewModel", "Filter: anime - checking video sources for anime")
                 videoSources.forEach { source ->
-                    if (isAnimeSource(source)) {
+                    val isAnime = isAnimeSource(source)
+                    android.util.Log.d("BrowseViewModel", "  ${source.name}: isAnime=$isAnime")
+                    if (isAnime) {
                         allSources.add(SourceInfo(
                             id = source.id,
                             name = source.name,
@@ -66,8 +83,11 @@ class BrowseViewModel @Inject constructor(
             }
             "movies" -> {
                 // Only movie/TV video sources (not anime)
+                android.util.Log.d("BrowseViewModel", "Filter: movies - checking video sources for non-anime")
                 videoSources.forEach { source ->
-                    if (!isAnimeSource(source)) {
+                    val isAnime = isAnimeSource(source)
+                    android.util.Log.d("BrowseViewModel", "  ${source.name}: isAnime=$isAnime (will ${if (isAnime) "skip" else "add"})")
+                    if (!isAnime) {
                         allSources.add(SourceInfo(
                             id = source.id,
                             name = source.name,
@@ -78,6 +98,7 @@ class BrowseViewModel @Inject constructor(
             }
             else -> {
                 // All sources (no filter)
+                android.util.Log.d("BrowseViewModel", "Filter: none - adding all sources")
                 mangaSources.forEach { source ->
                     allSources.add(SourceInfo(
                         id = source.id,
@@ -95,6 +116,8 @@ class BrowseViewModel @Inject constructor(
             }
         }
 
+        android.util.Log.d("BrowseViewModel", "Final sources after filter: ${allSources.map { it.name }}")
+
         _uiState.value = _uiState.value.copy(
             sources = allSources,
             selectedSourceIndex = if (allSources.isNotEmpty()) 0 else -1
@@ -108,10 +131,20 @@ class BrowseViewModel @Inject constructor(
     private fun isAnimeSource(source: VideoSource): Boolean {
         val lowerName = source.name.lowercase()
         val lowerId = source.id.lowercase()
-        val animeKeywords = listOf("anime", "gogoanime", "animekai", "aniwatch", "crunchyroll")
-        return animeKeywords.any { keyword ->
+        val animeKeywords = listOf(
+            "anime",
+            "gogo",
+            "animekai",
+            "aniwatch",
+            "crunchyroll",
+            "9anime",
+            "anilist"
+        )
+        val isAnime = animeKeywords.any { keyword ->
             lowerName.contains(keyword) || lowerId.contains(keyword)
         }
+        android.util.Log.d("BrowseViewModel", "isAnimeSource(${source.name}): name='$lowerName', id='$lowerId', result=$isAnime")
+        return isAnime
     }
 
     fun selectSource(index: Int) {
