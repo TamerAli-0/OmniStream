@@ -42,12 +42,12 @@ fun HomeScreen(
     val totalChaptersRead = stats?.chaptersRead ?: uiState.continueReading.sumOf { it.chapterIndex + 1 }
     val username = viewModel.getUsername() ?: "Guest"
 
-    // Get cover images for tab backgrounds
-    val animeCover = uiState.continueWatching.firstOrNull()?.coverUrl
-        ?: uiState.videoSections.firstOrNull()?.items?.firstOrNull()?.posterUrl
-    val mangaCover = uiState.continueReading.firstOrNull()?.coverUrl
-        ?: uiState.mangaSections.firstOrNull()?.items?.firstOrNull()?.coverUrl
-    val movieCover = uiState.videoSections.flatMap { it.items }.firstOrNull()?.posterUrl
+    // Get cover images for tab backgrounds - Use multiple covers for collage effect
+    val animeCovers = uiState.continueWatching.take(3).mapNotNull { it.coverUrl } +
+            uiState.videoSections.flatMap { it.items }.take(5).mapNotNull { it.posterUrl }
+    val mangaCovers = uiState.continueReading.take(3).mapNotNull { it.coverUrl } +
+            uiState.mangaSections.flatMap { it.items }.take(5).mapNotNull { it.coverUrl }
+    val movieCovers = uiState.videoSections.flatMap { it.items }.take(8).mapNotNull { it.posterUrl }
 
     Column(
         modifier = Modifier
@@ -92,31 +92,34 @@ fun HomeScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-                // ANIME LIST - Glossy Card with real cover
-                GlossyTabCard(
+                // ANIME LIST - Glossy Card with collage background
+                GlossyTabCardWithCollage(
                     modifier = Modifier.weight(1f),
                     title = "ANIME",
-                    coverUrl = animeCover,
+                    coverUrls = animeCovers,
                     isSelected = selectedTab == 0,
-                    onClick = { selectedTab = 0 }
+                    onClick = { selectedTab = 0 },
+                    accentColor = Color(0xFFFF6B6B) // Red accent for anime
                 )
 
-                // MANGA LIST - Glossy Card with real cover
-                GlossyTabCard(
+                // MANGA LIST - Glossy Card with collage background
+                GlossyTabCardWithCollage(
                     modifier = Modifier.weight(1f),
                     title = "MANGA",
-                    coverUrl = mangaCover,
+                    coverUrls = mangaCovers,
                     isSelected = selectedTab == 1,
-                    onClick = { selectedTab = 1 }
+                    onClick = { selectedTab = 1 },
+                    accentColor = Color(0xFF4ECDC4) // Cyan accent for manga
                 )
 
-                // MOVIES/TV - Glossy Card with real cover
-                GlossyTabCard(
+                // MOVIES/TV - Glossy Card with collage background
+                GlossyTabCardWithCollage(
                     modifier = Modifier.weight(1f),
                     title = "MOVIES",
-                    coverUrl = movieCover,
+                    coverUrls = movieCovers,
                     isSelected = selectedTab == 2,
-                    onClick = { selectedTab = 2 }
+                    onClick = { selectedTab = 2 },
+                    accentColor = Color(0xFFFFD93D) // Yellow accent for movies
                 )
         }
 
@@ -249,12 +252,13 @@ fun HomeScreen(
     }
 
 @Composable
-private fun GlossyTabCard(
+private fun GlossyTabCardWithCollage(
     modifier: Modifier = Modifier,
     title: String,
-    coverUrl: String?,
+    coverUrls: List<String>,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    accentColor: Color
 ) {
     Card(
         modifier = modifier
@@ -270,21 +274,42 @@ private fun GlossyTabCard(
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Real cover image background
-            if (coverUrl != null) {
-                AsyncImage(
-                    model = coverUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+            // Collage background with multiple covers
+            if (coverUrls.isNotEmpty()) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Gradient background with accent color
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        accentColor.copy(alpha = 0.3f),
+                                        Color(0xFF1a1a1a)
+                                    )
+                                )
+                            )
+                    )
+                    // Show first cover as main background
+                    coverUrls.firstOrNull()?.let { url ->
+                        AsyncImage(
+                            model = url,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                            alpha = 0.4f
+                        )
+                    }
+                }
             } else {
+                // Sexy gradient fallback with accent color
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.linearGradient(
                                 colors = listOf(
+                                    accentColor.copy(alpha = 0.4f),
                                     Color(0xFF2a2a2a),
                                     Color(0xFF1a1a1a)
                                 )
@@ -322,7 +347,7 @@ private fun GlossyTabCard(
                     )
             )
 
-            // Selected state shine overlay
+            // Selected state shine overlay with accent color
             if (isSelected) {
                 Box(
                     modifier = Modifier
@@ -330,7 +355,7 @@ private fun GlossyTabCard(
                         .background(
                             Brush.linearGradient(
                                 colors = listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                                    accentColor.copy(alpha = 0.3f),
                                     Color.Transparent
                                 )
                             )
@@ -347,7 +372,7 @@ private fun GlossyTabCard(
                 modifier = Modifier.align(Alignment.Center)
             )
 
-            // Bottom border glow on selected
+            // Bottom border glow with accent color
             if (isSelected) {
                 Box(
                     modifier = Modifier
@@ -357,7 +382,7 @@ private fun GlossyTabCard(
                             Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                                    accentColor.copy(alpha = 0.9f),
                                     Color.Transparent
                                 )
                             )
