@@ -25,6 +25,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import com.omnistream.data.anilist.AniListApi
 import com.omnistream.data.anilist.AniListAuthManager
+import kotlinx.coroutines.withContext
 import com.omnistream.ui.MainViewModel
 import com.omnistream.ui.MainViewModel.StartDestination
 import com.omnistream.ui.navigation.OmniNavigation
@@ -123,45 +124,93 @@ class MainActivity : ComponentActivity() {
         android.util.Log.d("MainActivity", "Deep link received: $data")
 
         if (data != null && data.scheme == "omnistream" && data.host == "anilist-callback") {
-            // Extract access token from fragment (after #)
-            val fragment = data.fragment ?: data.query ?: ""
-            android.util.Log.d("MainActivity", "Fragment/Query: $fragment")
+            // Extract authorization code from query parameters
+            val code = data.getQueryParameter("code")
+            android.util.Log.d("MainActivity", "Authorization code: ${code?.take(10)}...")
 
-            val token = when {
-                fragment.contains("access_token=") -> {
-                    fragment.substringAfter("access_token=").substringBefore("&")
-                }
-                else -> null
-            }
-
-            android.util.Log.d("MainActivity", "Extracted token: ${token?.take(10)}...")
-
-            if (!token.isNullOrEmpty()) {
-                // Save token
-                authManager.saveAccessToken(token)
-                android.util.Log.d("MainActivity", "Token saved successfully")
-
-                // Fetch and save user info
+            if (!code.isNullOrEmpty()) {
+                // Exchange code for access token
                 lifecycleScope.launch {
                     try {
-                        val user = aniListApi.getCurrentUser()
-                        if (user != null) {
-                            authManager.saveUserInfo(user.id, user.name, user.avatar)
-                            android.util.Log.d("MainActivity", "User info saved: ${user.name}")
+                        val token = exchangeCodeForToken(code)
+                        if (token != null) {
+                            // Save token
+                            authManager.saveAccessToken(token)
+                            android.util.Log.d("MainActivity", "Token saved successfully")
+
+                            // Fetch and save user info
+                            try {
+                                val user = aniListApi.getCurrentUser()
+                                if (user != null) {
+                                    authManager.saveUserInfo(user.id, user.name, user.avatar)
+                                    android.util.Log.d("MainActivity", "User info saved: ${user.name}")
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("MainActivity", "Failed to fetch user info", e)
+                            }
+
+                            // Show success message
+                            android.widget.Toast.makeText(
+                                this@MainActivity,
+                                "AniList connected successfully!",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            android.util.Log.e("MainActivity", "Failed to exchange code for token")
+                            android.widget.Toast.makeText(
+                                this@MainActivity,
+                                "Failed to connect AniList",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
                         }
                     } catch (e: Exception) {
-                        android.util.Log.e("MainActivity", "Failed to fetch user info", e)
+                        android.util.Log.e("MainActivity", "Error during token exchange", e)
+                        android.widget.Toast.makeText(
+                            this@MainActivity,
+                            "Error: ${e.message}",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
-
-                // Show success message
-                android.widget.Toast.makeText(
-                    this,
-                    "AniList connected successfully!",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
             } else {
-                android.util.Log.e("MainActivity", "Failed to extract token from: $fragment")
+                android.util.Log.e("MainActivity", "No authorization code in redirect")
+            }
+        }
+    }
+
+    private suspend fun exchangeCodeForToken(code: String): String? {
+        return withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val client = okhttp3.OkHttpClient()
+                val formBody = okhttp3.FormBody.Builder()
+                    .add("grant_type", "authorization_code")
+                    .add("client_id", com.omnistream.data.anilist.AniListAuthManager.CLIENT_ID)
+                    .add("client_secret", "RRGtDt7zWTq1dyFaHThwyKE3GM7SCrDXxAWplxZ8")
+                    .add("redirect_uri", com.omnistream.data.anilist.AniListAuthManager.REDIRECT_URI)
+                    .add("code", code)
+                    .build()
+
+                val request = okhttp3.Request.Builder()
+                    .url(com.omnistream.data.anilist.AniListAuthManager.TOKEN_URL)
+                    .post(formBody)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+
+                android.util.Log.d("MainActivity", "Token exchange response: $responseBody")
+
+                if (response.isSuccessful && responseBody != null) {
+                    // Parse JSON to extract access_token
+                    val jsonResponse = org.json.JSONObject(responseBody)
+                    jsonResponse.optString("access_token", null)
+                } else {
+                    android.util.Log.e("MainActivity", "Token exchange failed: ${response.code}")
+                    null
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Exception during token exchange", e)
+                null
             }
         }
     }
