@@ -1,836 +1,376 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package com.omnistream.ui.home
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.omnistream.data.local.WatchHistoryEntity
-import com.omnistream.domain.model.Manga
-import com.omnistream.domain.model.Video
-import java.net.URLEncoder
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
+fun HomeScreenSaikou(
     navController: NavController,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var selectedTab by remember { mutableStateOf(0) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // Top App Bar
-        TopAppBar(
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // "O" in purple + "mniStream" merged together
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
                     Text(
-                        text = "O",
-                        style = MaterialTheme.typography.headlineSmall,
+                        "OmniStream",
+                        style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Text(
-                        text = "mniStream",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-            },
-            actions = {
-                IconButton(
-                    onClick = { viewModel.refresh() },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                    Icon(
-                        Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                IconButton(
-                    onClick = { navController.navigate("search") },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                    Icon(
-                        Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                IconButton(
-                    onClick = { navController.navigate("settings") },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainer)
-                ) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent
-            ),
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
-
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            "Loading content...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
+                },
+                actions = {
+                    IconButton(onClick = { navController.navigate("settings") }) {
+                        Icon(Icons.Default.Settings, "Settings")
                     }
-                }
-            }
-
-            uiState.error != null -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            uiState.error ?: "Unknown error",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        TextButton(onClick = { viewModel.refresh() }) {
-                            Text("Retry", fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-                }
-            }
-
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(28.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp)
-                ) {
-                    // Continue Watching row (only if items exist)
-                    if (uiState.continueWatching.isNotEmpty()) {
-                        item {
-                            ContinueWatchingRow(
-                                items = uiState.continueWatching,
-                                onItemClick = { item ->
-                                    val encodedId = URLEncoder.encode(item.contentId, "UTF-8")
-                                    navController.navigate("video/${item.sourceId}/$encodedId")
-                                },
-                                onDeleteItem = { item ->
-                                    viewModel.deleteFromHistory(item.id)
-                                }
-                            )
-                        }
-                    }
-
-                    // Continue Reading row (only if items exist)
-                    if (uiState.continueReading.isNotEmpty()) {
-                        item {
-                            ContinueReadingRow(
-                                items = uiState.continueReading,
-                                onItemClick = { item ->
-                                    val encodedId = URLEncoder.encode(item.contentId, "UTF-8")
-                                    navController.navigate("manga/${item.sourceId}/$encodedId")
-                                },
-                                onDeleteItem = { item ->
-                                    viewModel.deleteFromHistory(item.id)
-                                }
-                            )
-                        }
-                    }
-
-                    // Video sections (Anime + Movies)
-                    items(uiState.videoSections) { section ->
-                        VideoSectionRow(
-                            section = section,
-                            onVideoClick = { video ->
-                                val encodedId = URLEncoder.encode(video.id, "UTF-8")
-                                navController.navigate("video/${video.sourceId}/$encodedId")
-                            }
-                        )
-                    }
-
-                    // Manga sections
-                    items(uiState.mangaSections) { section ->
-                        MangaSectionRow(
-                            section = section,
-                            onMangaClick = { manga ->
-                                val encodedId = URLEncoder.encode(manga.id, "UTF-8")
-                                navController.navigate("manga/${manga.sourceId}/$encodedId")
-                            }
-                        )
-                    }
-
-                    // Empty state
-                    if (uiState.videoSections.isEmpty() && uiState.mangaSections.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(48.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Text(
-                                        "No content available",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                    )
-                                    Text(
-                                        "Pull to refresh or check your connection",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun VideoSectionRow(
-    section: VideoSection,
-    onVideoClick: (Video) -> Unit
-) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = section.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary // Saikou uses accent color for headers
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
         ) {
-            items(section.items) { video ->
-                VideoCard(
-                    video = video,
-                    onClick = { onVideoClick(video) }
+            // Tab selector for ANIME / MANGA
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = {
+                        Text(
+                            "ANIME",
+                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
                 )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = {
+                        Text(
+                            "MANGA",
+                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                )
+            }
+
+            // Content based on selected tab
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 16.dp)
+            ) {
+                when (selectedTab) {
+                    0 -> {
+                        // ANIME TAB
+                        // Continue Watching section
+                        if (uiState.continueWatching.isNotEmpty()) {
+                            item {
+                                SectionHeader("Continue Watching")
+                            }
+                            item {
+                                HorizontalMediaList(
+                                    items = uiState.continueWatching.map { it.toMediaItem() },
+                                    onItemClick = { item ->
+                                        navController.navigate("video/${item.sourceId}/${item.id}")
+                                    }
+                                )
+                            }
+                        }
+
+                        // Favourite Anime section
+                        if (uiState.favoriteAnime.isNotEmpty()) {
+                            item {
+                                SectionHeader("Favourite Anime")
+                            }
+                            item {
+                                HorizontalMediaList(
+                                    items = uiState.favoriteAnime.map { it.toMediaItem() },
+                                    onItemClick = { item ->
+                                        navController.navigate("video/${item.sourceId}/${item.id}")
+                                    }
+                                )
+                            }
+                        }
+
+                        // Trending Anime
+                        if (uiState.trendingAnime.isNotEmpty()) {
+                            item {
+                                SectionHeader("Trending Now")
+                            }
+                            item {
+                                HorizontalMediaList(
+                                    items = uiState.trendingAnime.map { it.toMediaItem() },
+                                    onItemClick = { item ->
+                                        navController.navigate("video/${item.sourceId}/${item.id}")
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    1 -> {
+                        // MANGA TAB
+                        // Continue Reading section
+                        if (uiState.continueReading.isNotEmpty()) {
+                            item {
+                                SectionHeader("Continue Reading")
+                            }
+                            item {
+                                HorizontalMediaList(
+                                    items = uiState.continueReading.map { it.toMediaItem() },
+                                    onItemClick = { item ->
+                                        navController.navigate("manga/${item.sourceId}/${item.id}")
+                                    }
+                                )
+                            }
+                        }
+
+                        // Favourite Manga section
+                        if (uiState.favoriteManga.isNotEmpty()) {
+                            item {
+                                SectionHeader("Favourite Manga")
+                            }
+                            item {
+                                HorizontalMediaList(
+                                    items = uiState.favoriteManga.map { it.toMediaItem() },
+                                    onItemClick = { item ->
+                                        navController.navigate("manga/${item.sourceId}/${item.id}")
+                                    }
+                                )
+                            }
+                        }
+
+                        // Trending Manga
+                        if (uiState.trendingManga.isNotEmpty()) {
+                            item {
+                                SectionHeader("Trending Now")
+                            }
+                            item {
+                                HorizontalMediaList(
+                                    items = uiState.trendingManga.map { it.toMediaItem() },
+                                    onItemClick = { item ->
+                                        navController.navigate("manga/${item.sourceId}/${item.id}")
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Empty state
+                if ((selectedTab == 0 && uiState.continueWatching.isEmpty() && uiState.favoriteAnime.isEmpty() && uiState.trendingAnime.isEmpty()) ||
+                    (selectedTab == 1 && uiState.continueReading.isEmpty() && uiState.favoriteManga.isEmpty() && uiState.trendingManga.isEmpty())) {
+                    item {
+                        EmptyState(
+                            icon = if (selectedTab == 0) Icons.Default.Tv else Icons.Default.Book,
+                            message = if (selectedTab == 0) "Start watching anime!" else "Start reading manga!",
+                            onActionClick = {
+                                navController.navigate(if (selectedTab == 0) "browse" else "search")
+                            }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun MangaSectionRow(
-    section: MangaSection,
-    onMangaClick: (Manga) -> Unit
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+    )
+}
+
+@Composable
+private fun HorizontalMediaList(
+    items: List<MediaItem>,
+    onItemClick: (MediaItem) -> Unit
 ) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = section.title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.secondary // Use secondary (violet) for variety
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(items) { item ->
+            MediaCard(
+                item = item,
+                onClick = { onItemClick(item) }
             )
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(section.items) { manga ->
-                MangaCard(
-                    manga = manga,
-                    onClick = { onMangaClick(manga) }
-                )
-            }
-        }
     }
 }
 
 @Composable
-private fun VideoCard(
-    video: Video,
+private fun MediaCard(
+    item: MediaItem,
     onClick: () -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier
-            .width(145.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp), // Saikou uses 16dp corner radius
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 2.dp, // Subtle elevation like Saikou
-            pressedElevation = 8.dp
-        )
+            .width(120.dp)
+            .clickable(onClick = onClick)
     ) {
-        Column {
-            // Poster with gradient overlay
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.67f)
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            ) {
-                if (video.posterUrl != null) {
-                    AsyncImage(
-                        model = video.posterUrl,
-                        contentDescription = video.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                video.title.take(2).uppercase(),
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        }
-                    }
-                }
+        // Cover image
+        Surface(
+            modifier = Modifier
+                .width(120.dp)
+                .height(170.dp),
+            shape = RoundedCornerShape(12.dp),
+            shadowElevation = 4.dp
+        ) {
+            AsyncImage(
+                model = item.coverUrl,
+                contentDescription = item.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
 
-                // Gradient overlay at bottom
+            // Progress overlay if watching/reading
+            if (item.progress > 0f) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
-                            )
-                        )
-                )
-
-                // Rating badge
-                video.rating?.let { rating ->
-                    Surface(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .align(Alignment.TopEnd),
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.Black.copy(alpha = 0.7f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = Color(0xFFFFB800)
-                            )
-                            Text(
-                                String.format("%.1f", rating),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Info
-            Column(
-                modifier = Modifier.padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = video.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f))
                 ) {
-                    video.year?.let { year ->
-                        Text(
-                            text = year.toString(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MangaCard(
-    manga: Manga,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .width(135.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column {
-            // Cover with gradient overlay
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.7f)
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            ) {
-                if (manga.coverUrl != null) {
-                    AsyncImage(
-                        model = manga.coverUrl,
-                        contentDescription = manga.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                manga.title.take(2).uppercase(),
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            )
-                        }
-                    }
-                }
-
-                // Gradient overlay
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(60.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
-                            )
-                        )
-                )
-
-                // Status badge
-                manga.status.name.takeIf { it != "UNKNOWN" }?.let { status ->
-                    Surface(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .align(Alignment.TopEnd),
-                        shape = RoundedCornerShape(6.dp),
-                        color = when (status) {
-                            "ONGOING" -> Color(0xFF4CAF50).copy(alpha = 0.9f)
-                            "COMPLETED" -> MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
-                            else -> Color.Black.copy(alpha = 0.7f)
-                        }
-                    ) {
-                        Text(
-                            text = status.take(3),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-            }
-
-            // Info
-            Column(
-                modifier = Modifier.padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = manga.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                manga.author?.let { author ->
-                    Text(
-                        text = author,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ContinueWatchingRow(
-    items: List<WatchHistoryEntity>,
-    onItemClick: (WatchHistoryEntity) -> Unit,
-    onDeleteItem: (WatchHistoryEntity) -> Unit
-) {
-    Column {
-        Text(
-            text = "Continue Watching",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(items) { item ->
-                ContinueWatchingCard(
-                    item = item,
-                    onClick = { onItemClick(item) },
-                    onDelete = { onDeleteItem(item) }
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun ContinueWatchingCard(
-    item: WatchHistoryEntity,
-    onClick: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = Modifier
-            .width(160.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = { showMenu = true }
-            ),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        )
-    ) {
-        Box {
-            Column {
-                Box {
-                    AsyncImage(
-                        model = item.coverUrl,
-                        contentDescription = item.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    )
-                    // Thin progress bar at bottom of thumbnail
                     LinearProgressIndicator(
-                        progress = { item.progressPercentage.coerceIn(0f, 1f) },
+                        progress = { item.progress },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(3.dp)
                             .align(Alignment.BottomCenter),
                         color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.Black.copy(alpha = 0.5f)
+                        trackColor = Color.White.copy(alpha = 0.3f)
                     )
                 }
-                Text(
-                    text = item.title,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(8.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            // Long-press dropdown menu
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Continue") },
-                    onClick = {
-                        showMenu = false
-                        onClick()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Delete") },
-                    onClick = {
-                        showMenu = false
-                        onDelete()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Details") },
-                    onClick = {
-                        showMenu = false
-                        onClick()
-                    }
-                )
             }
         }
-    }
-}
 
-@Composable
-private fun ContinueReadingRow(
-    items: List<WatchHistoryEntity>,
-    onItemClick: (WatchHistoryEntity) -> Unit,
-    onDeleteItem: (WatchHistoryEntity) -> Unit
-) {
-    Column {
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Title
         Text(
-            text = "Continue Reading",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.padding(horizontal = 16.dp)
+            text = item.title,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(120.dp)
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(items) { item ->
-                ContinueReadingCard(
-                    item = item,
-                    onClick = { onItemClick(item) },
-                    onDelete = { onDeleteItem(item) }
-                )
-            }
+
+        // Subtitle (episode/chapter info)
+        if (item.subtitle != null) {
+            Text(
+                text = item.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ContinueReadingCard(
-    item: WatchHistoryEntity,
-    onClick: () -> Unit,
-    onDelete: () -> Unit
+private fun EmptyState(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    message: String,
+    onActionClick: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    Card(
+    Column(
         modifier = Modifier
-            .width(135.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = { showMenu = true }
-            ),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        )
+            .fillMaxWidth()
+            .padding(48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Box {
-            Column {
-                Box {
-                    AsyncImage(
-                        model = item.coverUrl,
-                        contentDescription = item.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(0.7f)
-                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    )
-                    // Percentage overlay at bottom-right of thumbnail
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(6.dp),
-                        shape = RoundedCornerShape(6.dp),
-                        color = Color.Black.copy(alpha = 0.7f)
-                    ) {
-                        Text(
-                            text = "${(item.progressPercentage * 100).toInt()}%",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    }
-                }
-                Text(
-                    text = item.title,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(8.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            // Long-press dropdown menu
-            DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Continue") },
-                    onClick = {
-                        showMenu = false
-                        onClick()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Delete") },
-                    onClick = {
-                        showMenu = false
-                        onDelete()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Details") },
-                    onClick = {
-                        showMenu = false
-                        onClick()
-                    }
-                )
-            }
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+        )
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        )
+        Button(onClick = onActionClick) {
+            Text("Explore")
         }
     }
+}
+
+data class MediaItem(
+    val id: String,
+    val sourceId: String,
+    val title: String,
+    val coverUrl: String?,
+    val subtitle: String?,
+    val progress: Float = 0f
+)
+
+// Extension function to convert WatchHistoryEntity to MediaItem
+private fun com.omnistream.data.local.WatchHistoryEntity.toMediaItem(): MediaItem {
+    val progressPercent = if (totalDuration > 0) {
+        progressPosition.toFloat() / totalDuration.toFloat()
+    } else {
+        progressPercentage
+    }
+
+    val subtitle = when (contentType) {
+        "manga" -> if (totalChapters > 0) {
+            "Chapter ${chapterIndex + 1}/$totalChapters"
+        } else {
+            "Chapter ${chapterIndex + 1}"
+        }
+        else -> if (totalChapters > 0) {
+            "Episode ${chapterIndex + 1}/$totalChapters"
+        } else {
+            "Episode ${chapterIndex + 1}"
+        }
+    }
+
+    return MediaItem(
+        id = contentId,
+        sourceId = sourceId,
+        title = title ?: "Unknown",
+        coverUrl = coverUrl,
+        subtitle = subtitle,
+        progress = progressPercent
+    )
 }
