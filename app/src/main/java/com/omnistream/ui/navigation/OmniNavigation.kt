@@ -280,7 +280,7 @@ fun OmniNavigation(
                     navArgument("coverUrl") { type = NavType.StringType; defaultValue = "" }
                 )
             ) { backStackEntry ->
-                ReaderScreen(
+                SaikouReaderScreen(
                     navController = navController,
                     sourceId = backStackEntry.arguments?.getString("sourceId") ?: "",
                     mangaId = backStackEntry.arguments?.getString("mangaId") ?: "",
