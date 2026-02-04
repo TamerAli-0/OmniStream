@@ -44,6 +44,7 @@ import com.omnistream.ui.home.HomeScreen
 import com.omnistream.ui.library.LibraryScreen
 import com.omnistream.ui.player.PlayerScreen
 import com.omnistream.ui.reader.ReaderScreen
+import com.omnistream.ui.reader.SaikouReaderScreen
 import com.omnistream.ui.search.SearchScreen
 import com.omnistream.ui.settings.SettingsScreen
 

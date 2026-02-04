@@ -11,9 +11,11 @@ import com.omnistream.data.local.UserPreferences
 import com.omnistream.data.local.WatchHistoryDao
 import com.omnistream.data.preferences.PlayerPreferencesRepository
 import com.omnistream.data.remote.ApiService
+import com.omnistream.data.remote.GitHubApiService
 import com.omnistream.data.repository.AuthRepository
 import com.omnistream.data.repository.SyncRepository
 import com.omnistream.data.repository.DownloadRepository
+import com.omnistream.data.repository.UpdateRepository
 import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.source.SourceManager
 import dagger.Module
@@ -21,6 +23,12 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import okhttp3.OkHttpClient
+import okhttp3.MediaType.Companion.toMediaType
+import retrofit2.Retrofit
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import kotlinx.serialization.json.Json
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -127,5 +135,40 @@ object AppModule {
         @ApplicationContext context: Context
     ): PlayerPreferencesRepository {
         return PlayerPreferencesRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGitHubRetrofit(): Retrofit {
+        val json = Json {
+            ignoreUnknownKeys = true
+            coerceInputValues = true
+        }
+
+        val okHttpClient = OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl("https://api.github.com/")
+            .client(okHttpClient)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGitHubApiService(retrofit: Retrofit): GitHubApiService {
+        return retrofit.create(GitHubApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideUpdateRepository(
+        @ApplicationContext context: Context,
+        githubApi: GitHubApiService
+    ): UpdateRepository {
+        return UpdateRepository(context, githubApi)
     }
 }

@@ -83,6 +83,12 @@ class ReaderViewModel @Inject constructor(
                 // Find current chapter index
                 currentChapterIndex = chapterList.indexOfFirst { it.id == currentChapterId }
 
+                // Update UI state with chapter list and manga title
+                _uiState.value = _uiState.value.copy(
+                    chapters = chapterList,
+                    mangaTitle = mangaTitle.ifEmpty { null }
+                )
+
                 loadCurrentChapterPages(source)
 
                 // After pages are loaded, check for saved progress to resume
@@ -177,6 +183,24 @@ class ReaderViewModel @Inject constructor(
         )
 
         startAutoSave()
+    }
+
+    fun loadChapter(chapterId: String) {
+        currentChapterId = chapterId
+        currentChapterIndex = chapterList.indexOfFirst { it.id == chapterId }
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, currentPage = 0, restoredPage = 0)
+            try {
+                val source = sourceManager.getMangaSource(sourceId)
+                    ?: throw Exception("Source not found: $sourceId")
+                loadCurrentChapterPages(source)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Failed to load chapter"
+                )
+            }
+        }
     }
 
     fun goToPreviousChapter() {
@@ -286,5 +310,7 @@ data class ReaderUiState(
     val isOffline: Boolean = false,
     val hasPreviousChapter: Boolean = false,
     val hasNextChapter: Boolean = false,
-    val restoredPage: Int? = null
+    val restoredPage: Int? = null,
+    val chapters: List<Chapter> = emptyList(),
+    val mangaTitle: String? = null
 )
