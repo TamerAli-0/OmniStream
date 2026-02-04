@@ -50,6 +50,20 @@ fun AniListLoginScreen(
                     settings.domStorageEnabled = true
 
                     webViewClient = object : WebViewClient() {
+                        override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                            super.onPageStarted(view, url, favicon)
+                            android.util.Log.d("AniListLogin", "Page started loading: $url")
+                        }
+
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: android.webkit.WebResourceRequest?,
+                            error: android.webkit.WebResourceError?
+                        ) {
+                            super.onReceivedError(view, request, error)
+                            android.util.Log.e("AniListLogin", "WebView error: ${error?.description}")
+                        }
+
                         override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
                             android.util.Log.d("AniListLogin", "URL intercepted: $url")
 
@@ -92,7 +106,9 @@ fun AniListLoginScreen(
                         }
                     }
 
-                    loadUrl(authManager.getAuthUrl())
+                    val authUrl = authManager.getAuthUrl()
+                    android.util.Log.d("AniListLogin", "Loading OAuth URL: $authUrl")
+                    loadUrl(authUrl)
                 }
             }
         )
