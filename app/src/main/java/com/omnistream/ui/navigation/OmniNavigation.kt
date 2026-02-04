@@ -1,6 +1,9 @@
 package com.omnistream.ui.navigation
 
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -13,8 +16,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -350,7 +355,7 @@ fun OmniNavigation(
                         )
                 )
 
-                // Floating glossy nav bar
+                // Floating glossy nav bar with animated indicator
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -359,57 +364,93 @@ fun OmniNavigation(
                         .height(80.dp)
                         .align(Alignment.BottomCenter),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(35.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
+                    color = Color.White.copy(alpha = 0.15f),
                     shadowElevation = 12.dp,
                     tonalElevation = 8.dp
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        bottomNavItems.forEachIndexed { index, screen ->
-                            val selected = currentDestination?.hierarchy?.any {
-                                it.route == screen.route
-                            } == true
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Find selected index
+                        val selectedIndex = bottomNavItems.indexOfFirst { screen ->
+                            currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                        }.coerceAtLeast(0)
 
-                            Column(
+                        // Animated indicator position
+                        val indicatorOffset by animateFloatAsState(
+                            targetValue = selectedIndex.toFloat(),
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ),
+                            label = "indicator"
+                        )
+
+                        // Animated pill indicator
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                        ) {
+                            val itemWidth = (Modifier.fillMaxWidth().toString().length / bottomNavItems.size).toFloat()
+
+                            Surface(
                                 modifier = Modifier
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null
-                                    ) {
-                                        navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                // Icon
-                                Icon(
-                                    imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
-                                    contentDescription = screen.title,
-                                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(26.dp)
-                                )
+                                    .width(70.dp)
+                                    .height(60.dp)
+                                    .offset(x = (indicatorOffset * 73).dp),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                            ) {}
+                        }
 
-                                // Label
-                                Text(
-                                    text = screen.title.uppercase(),
-                                    fontSize = 10.sp,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    maxLines = 1,
-                                    letterSpacing = 0.5.sp
-                                )
+                        // Nav items
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            bottomNavItems.forEachIndexed { index, screen ->
+                                val selected = currentDestination?.hierarchy?.any {
+                                    it.route == screen.route
+                                } == true
+
+                                Column(
+                                    modifier = Modifier
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null
+                                        ) {
+                                            navController.navigate(screen.route) {
+                                                popUpTo(navController.graph.findStartDestination().id) {
+                                                    saveState = true
+                                                }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    // Icon
+                                    Icon(
+                                        imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
+                                        contentDescription = screen.title,
+                                        tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(26.dp)
+                                    )
+
+                                    // Label
+                                    Text(
+                                        text = screen.title.uppercase(),
+                                        fontSize = 10.sp,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                        maxLines = 1,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
                             }
                         }
                     }
