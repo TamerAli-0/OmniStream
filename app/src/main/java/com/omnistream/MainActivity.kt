@@ -1,5 +1,6 @@
 package com.omnistream
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.WindowInsetsController
@@ -21,6 +22,9 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.lifecycleScope
+import com.omnistream.data.anilist.AniListApi
+import com.omnistream.data.anilist.AniListAuthManager
 import com.omnistream.ui.MainViewModel
 import com.omnistream.ui.MainViewModel.StartDestination
 import com.omnistream.ui.navigation.OmniNavigation
@@ -28,15 +32,26 @@ import com.omnistream.ui.theme.AppColorScheme
 import com.omnistream.ui.theme.DarkModeOption
 import com.omnistream.ui.theme.OmniStreamTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val mainViewModel: MainViewModel by viewModels()
 
+    @Inject
+    lateinit var authManager: AniListAuthManager
+
+    @Inject
+    lateinit var aniListApi: AniListApi
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // Handle deep link if coming from AniList OAuth
+        handleDeepLink(intent)
 
         enableEdgeToEdge()
 
@@ -83,6 +98,59 @@ class MainActivity : ComponentActivity() {
                         is StartDestination.Home -> OmniNavigation(startDestination = "home")
                     }
                 }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleDeepLink(intent)
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
+        val data = intent?.data
+        android.util.Log.d("MainActivity", "Deep link received: $data")
+
+        if (data != null && data.scheme == "omnistream" && data.host == "anilist-callback") {
+            // Extract access token from fragment (after #)
+            val fragment = data.fragment ?: data.query ?: ""
+            android.util.Log.d("MainActivity", "Fragment/Query: $fragment")
+
+            val token = when {
+                fragment.contains("access_token=") -> {
+                    fragment.substringAfter("access_token=").substringBefore("&")
+                }
+                else -> null
+            }
+
+            android.util.Log.d("MainActivity", "Extracted token: ${token?.take(10)}...")
+
+            if (!token.isNullOrEmpty()) {
+                // Save token
+                authManager.saveAccessToken(token)
+                android.util.Log.d("MainActivity", "Token saved successfully")
+
+                // Fetch and save user info
+                lifecycleScope.launch {
+                    try {
+                        val user = aniListApi.getCurrentUser()
+                        if (user != null) {
+                            authManager.saveUserInfo(user.id, user.name, user.avatar)
+                            android.util.Log.d("MainActivity", "User info saved: ${user.name}")
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Failed to fetch user info", e)
+                    }
+                }
+
+                // Show success message
+                android.widget.Toast.makeText(
+                    this,
+                    "AniList connected successfully!",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                android.util.Log.e("MainActivity", "Failed to extract token from: $fragment")
             }
         }
     }
