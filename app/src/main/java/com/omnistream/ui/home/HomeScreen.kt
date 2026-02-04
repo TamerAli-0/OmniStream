@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -94,19 +95,55 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    username,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    "Episodes: $totalEpisodesWatched • Chapters: $totalChaptersRead",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp
-                )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // AniList Avatar
+                val avatarUrl = stats?.user?.avatar
+                if (avatarUrl != null) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.size(48.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        AsyncImage(
+                            model = avatarUrl,
+                            contentDescription = "Profile Avatar",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        modifier = Modifier.size(48.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            contentDescription = "Profile",
+                            modifier = Modifier.fillMaxSize().padding(8.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Column {
+                    Text(
+                        username,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "Episodes: $totalEpisodesWatched • Chapters: $totalChaptersRead",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
+                }
             }
+
             IconButton(onClick = { navController.navigate("settings") }) {
                 Icon(
                     Icons.Default.Settings,

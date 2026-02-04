@@ -152,7 +152,7 @@ fun OmniNavigation(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = if (showBottomNav) 110.dp else 0.dp)
+                .padding(bottom = if (showBottomNav) 120.dp else 0.dp)
         ) {
             NavHost(
                 navController = navController,
@@ -356,7 +356,7 @@ fun OmniNavigation(
                         .fillMaxWidth()
                         .windowInsetsPadding(WindowInsets.navigationBars)
                         .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                        .height(70.dp)
+                        .height(80.dp)
                         .align(Alignment.BottomCenter),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(35.dp),
                     color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
@@ -366,7 +366,7 @@ fun OmniNavigation(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {

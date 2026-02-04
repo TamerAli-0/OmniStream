@@ -41,10 +41,21 @@
             android:exported="true"
             android:theme="@style/Theme.OmniStream.Splash"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:supportsPictureInPicture="true">
+            android:supportsPictureInPicture="true"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- AniList OAuth callback -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="omnistream"
+                    android:host="anilist-callback" />
             </intent-filter>
         </activity>
 
