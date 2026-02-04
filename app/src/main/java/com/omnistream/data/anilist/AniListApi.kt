@@ -38,13 +38,11 @@ class AniListApi @Inject constructor(
         """.trimIndent()
 
         try {
-            val response = httpClient.post(
+            val response = httpClient.postJson(
                 url = GRAPHQL_URL,
-                body = """{"query":"${query.replace("\n", "\\n")}"}""",
+                json = """{"query":"${query.replace("\n", "\\n")}"}""",
                 headers = mapOf(
-                    "Authorization" to "Bearer $token",
-                    "Content-Type" to "application/json",
-                    "Accept" to "application/json"
+                    "Authorization" to "Bearer $token"
                 )
             )
 
@@ -87,13 +85,11 @@ class AniListApi @Inject constructor(
         """.trimIndent()
 
         try {
-            httpClient.post(
+            httpClient.postJson(
                 url = GRAPHQL_URL,
-                body = """{"query":"${mutation.replace("\n", "\\n")}"}""",
+                json = """{"query":"${mutation.replace("\n", "\\n")}"}""",
                 headers = mapOf(
-                    "Authorization" to "Bearer $token",
-                    "Content-Type" to "application/json",
-                    "Accept" to "application/json"
+                    "Authorization" to "Bearer $token"
                 )
             )
             true
@@ -127,13 +123,11 @@ class AniListApi @Inject constructor(
         """.trimIndent()
 
         try {
-            httpClient.post(
+            httpClient.postJson(
                 url = GRAPHQL_URL,
-                body = """{"query":"${mutation.replace("\n", "\\n")}"}""",
+                json = """{"query":"${mutation.replace("\n", "\\n")}"}""",
                 headers = mapOf(
-                    "Authorization" to "Bearer $token",
-                    "Content-Type" to "application/json",
-                    "Accept" to "application/json"
+                    "Authorization" to "Bearer $token"
                 )
             )
             true
@@ -165,13 +159,11 @@ class AniListApi @Inject constructor(
         """.trimIndent()
 
         try {
-            val response = httpClient.post(
+            val response = httpClient.postJson(
                 url = GRAPHQL_URL,
-                body = """{"query":"${query.replace("\n", "\\n")}"}""",
+                json = """{"query":"${query.replace("\n", "\\n")}"}""",
                 headers = mapOf(
-                    "Authorization" to "Bearer $token",
-                    "Content-Type" to "application/json",
-                    "Accept" to "application/json"
+                    "Authorization" to "Bearer $token"
                 )
             )
 
@@ -220,13 +212,11 @@ class AniListApi @Inject constructor(
         """.trimIndent()
 
         try {
-            val response = httpClient.post(
+            val response = httpClient.postJson(
                 url = GRAPHQL_URL,
-                body = """{"query":"${query.replace("\n", "\\n")}"}""",
+                json = """{"query":"${query.replace("\n", "\\n")}"}""",
                 headers = mapOf(
-                    "Authorization" to "Bearer $token",
-                    "Content-Type" to "application/json",
-                    "Accept" to "application/json"
+                    "Authorization" to "Bearer $token"
                 )
             )
 
