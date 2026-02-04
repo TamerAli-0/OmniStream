@@ -22,8 +22,17 @@ class BrowseViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(BrowseUiState())
     val uiState: StateFlow<BrowseUiState> = _uiState.asStateFlow()
 
+    private var currentFilter: String? = null
+
     init {
         loadSources()
+    }
+
+    fun setFilter(filterType: String?) {
+        if (currentFilter != filterType) {
+            currentFilter = filterType
+            loadSources()
+        }
     }
 
     private fun loadSources() {
@@ -32,20 +41,58 @@ class BrowseViewModel @Inject constructor(
 
         val allSources = mutableListOf<SourceInfo>()
 
-        mangaSources.forEach { source ->
-            allSources.add(SourceInfo(
-                id = source.id,
-                name = source.name,
-                type = SourceType.MANGA
-            ))
-        }
-
-        videoSources.forEach { source ->
-            allSources.add(SourceInfo(
-                id = source.id,
-                name = source.name,
-                type = SourceType.VIDEO
-            ))
+        when (currentFilter) {
+            "manga" -> {
+                // Only manga sources
+                mangaSources.forEach { source ->
+                    allSources.add(SourceInfo(
+                        id = source.id,
+                        name = source.name,
+                        type = SourceType.MANGA
+                    ))
+                }
+            }
+            "anime" -> {
+                // Only anime video sources (check for anime keywords in name/id)
+                videoSources.forEach { source ->
+                    if (isAnimeSource(source)) {
+                        allSources.add(SourceInfo(
+                            id = source.id,
+                            name = source.name,
+                            type = SourceType.VIDEO
+                        ))
+                    }
+                }
+            }
+            "movies" -> {
+                // Only movie/TV video sources (not anime)
+                videoSources.forEach { source ->
+                    if (!isAnimeSource(source)) {
+                        allSources.add(SourceInfo(
+                            id = source.id,
+                            name = source.name,
+                            type = SourceType.VIDEO
+                        ))
+                    }
+                }
+            }
+            else -> {
+                // All sources (no filter)
+                mangaSources.forEach { source ->
+                    allSources.add(SourceInfo(
+                        id = source.id,
+                        name = source.name,
+                        type = SourceType.MANGA
+                    ))
+                }
+                videoSources.forEach { source ->
+                    allSources.add(SourceInfo(
+                        id = source.id,
+                        name = source.name,
+                        type = SourceType.VIDEO
+                    ))
+                }
+            }
         }
 
         _uiState.value = _uiState.value.copy(
@@ -55,6 +102,15 @@ class BrowseViewModel @Inject constructor(
 
         if (allSources.isNotEmpty()) {
             loadSourceContent(allSources[0])
+        }
+    }
+
+    private fun isAnimeSource(source: VideoSource): Boolean {
+        val lowerName = source.name.lowercase()
+        val lowerId = source.id.lowercase()
+        val animeKeywords = listOf("anime", "gogoanime", "animekai", "aniwatch", "crunchyroll")
+        return animeKeywords.any { keyword ->
+            lowerName.contains(keyword) || lowerId.contains(keyword)
         }
     }
 

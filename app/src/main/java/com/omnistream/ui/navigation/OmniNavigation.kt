@@ -91,11 +91,11 @@ sealed class Screen(
         unselectedIcon = Icons.Outlined.Movie
     )
 
-    data object Browse : Screen(
-        route = "browse",
-        title = "Browse",
-        selectedIcon = Icons.Filled.Explore,
-        unselectedIcon = Icons.Outlined.Explore
+    data object Anime : Screen(
+        route = "anime",
+        title = "Anime",
+        selectedIcon = Icons.Filled.Tv,
+        unselectedIcon = Icons.Outlined.Tv
     )
 
     data object Search : Screen(
@@ -129,11 +129,11 @@ sealed class Screen(
 
 // Bottom nav - 5 items with Saikou styling
 val bottomNavItems = listOf(
-    Screen.Movies,      // Left
-    Screen.Browse,      // Left-center
-    Screen.Home,        // Center
-    Screen.Library,     // Right-center
-    Screen.Manga        // Right
+    Screen.Movies,      // Left - Movies/TV shows only
+    Screen.Anime,       // Left-center - Anime only
+    Screen.Home,        // Center - Everything
+    Screen.Library,     // Right-center - Saved content
+    Screen.Manga        // Right - Manga only
 )
 
 // Auth routes (no bottom nav)
@@ -224,12 +224,19 @@ fun OmniNavigation(
                 }
 
                 composable(Screen.Movies.route) {
-                    // Movies/TV Shows screen (filtered browse)
-                    BrowseScreen(navController = navController)
+                    // Movies/TV Shows only - filter to movie sources
+                    BrowseScreen(
+                        navController = navController,
+                        filterType = "movies" // Only show movie/TV sources
+                    )
                 }
 
-                composable(Screen.Browse.route) {
-                    BrowseScreen(navController = navController)
+                composable(Screen.Anime.route) {
+                    // Anime only - filter to anime sources
+                    BrowseScreen(
+                        navController = navController,
+                        filterType = "anime" // Only show anime sources
+                    )
                 }
 
                 composable(Screen.Search.route) {
@@ -241,8 +248,11 @@ fun OmniNavigation(
                 }
 
                 composable(Screen.Manga.route) {
-                    // Manga/Anime screen (filtered browse)
-                    BrowseScreen(navController = navController)
+                    // Manga only - filter to manga sources
+                    BrowseScreen(
+                        navController = navController,
+                        filterType = "manga" // Only show manga sources
+                    )
                 }
 
                 composable(Screen.Downloads.route) {

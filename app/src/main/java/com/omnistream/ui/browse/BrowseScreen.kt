@@ -62,9 +62,22 @@ import java.net.URLEncoder
 @Composable
 fun BrowseScreen(
     navController: NavController,
+    filterType: String? = null, // "movies", "anime", "manga", or null for all
     viewModel: BrowseViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Set filter when screen loads
+    androidx.compose.runtime.LaunchedEffect(filterType) {
+        viewModel.setFilter(filterType)
+    }
+
+    val screenTitle = when (filterType) {
+        "movies" -> "Movies & TV"
+        "anime" -> "Anime"
+        "manga" -> "Manga"
+        else -> "Browse"
+    }
 
     Column(
         modifier = Modifier
@@ -74,7 +87,7 @@ fun BrowseScreen(
         TopAppBar(
             title = {
                 Text(
-                    "Browse",
+                    screenTitle,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
