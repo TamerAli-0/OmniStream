@@ -333,7 +333,11 @@ data class HomeUiState(
     val mangaSections: List<MangaSection> = emptyList(),
     val videoSections: List<VideoSection> = emptyList(),
     val continueWatching: List<WatchHistoryEntity> = emptyList(),
-    val continueReading: List<WatchHistoryEntity> = emptyList()
+    val continueReading: List<WatchHistoryEntity> = emptyList(),
+    val favoriteAnime: List<WatchHistoryEntity> = emptyList(),
+    val favoriteManga: List<WatchHistoryEntity> = emptyList(),
+    val trendingAnime: List<WatchHistoryEntity> = emptyList(),
+    val trendingManga: List<WatchHistoryEntity> = emptyList()
 )
 
 data class MangaSection(
