@@ -155,6 +155,8 @@ class MainActivity : ComponentActivity() {
                                 "AniList connected successfully!",
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
+
+                            // AniListLoginScreen will auto-close by polling auth status
                         } else {
                             android.util.Log.e("MainActivity", "Failed to exchange code for token")
                             android.widget.Toast.makeText(

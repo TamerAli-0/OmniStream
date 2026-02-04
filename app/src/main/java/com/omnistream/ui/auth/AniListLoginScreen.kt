@@ -26,6 +26,18 @@ fun AniListLoginScreen(
     val context = LocalContext.current
     val authManager = remember { AniListAuthManager(context) }
 
+    // Poll for login status (check every 500ms)
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(500)
+            if (authManager.isLoggedIn()) {
+                // Successfully connected, close this screen
+                onSuccess()
+                break
+            }
+        }
+    }
+
     // Launch browser on composition
     LaunchedEffect(Unit) {
         try {
