@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -11,11 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavController
@@ -25,15 +27,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 /**
- * Comprehensive settings screen combining Saikou + Kotatsu features:
- * - Account (AniList, MAL, Kitsu, Shikimori)
- * - Appearance (Theme, Colors, AMOLED, Grid Size)
- * - Player (Quality, Auto-skip, Gestures, Speed)
- * - Reader (Reading Mode, Color Filter, Page Turn, Scaling, Preloading)
- * - Downloads (Location, Quality, Concurrent, Network)
- * - Security (Password, Fingerprint, Incognito)
- * - Backup & Sync
- * - Advanced (Data Saver, Cache, Update Check)
+ * Settings screen with Saikou-inspired clean design
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,235 +41,374 @@ fun SettingsScreen(
     val anilistUsername = authManager.getUsername()
     val anilistAvatar = authManager.getAvatar()
 
-    // Theme state
     val colorScheme by viewModel.colorScheme.collectAsState()
     val darkMode by viewModel.darkMode.collectAsState()
-    var showColorPicker by remember { mutableStateOf(false) }
-    var showThemePicker by remember { mutableStateOf(false) }
+    var showDnsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = Color(0xFF0a0a0a),
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings", fontWeight = FontWeight.Bold, color = Color.White) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF121212)
-                )
-            )
-        }
+        containerColor = Color(0xFF0a0a0a)
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(padding)
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // ==================== ACCOUNT ====================
-            item { SectionTitle("Account & Tracking") }
-
-            // AniList
+            // Header
             item {
-                if (isAniListConnected && anilistUsername != null) {
-                    SettingCard {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            if (anilistAvatar != null) {
-                                Surface(shape = RoundedCornerShape(50), modifier = Modifier.size(48.dp)) {
-                                    AsyncImage(model = anilistAvatar, contentDescription = "AniList Avatar")
-                                }
-                            } else {
-                                Icon(Icons.Default.AccountCircle, null, Modifier.size(48.dp), MaterialTheme.colorScheme.primary)
-                            }
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("AniList Connected", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                                Text(anilistUsername, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(0.6f))
-                            }
-
-                            TextButton(onClick = { authManager.logout() }) { Text("Disconnect") }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Default.ArrowBack, "Back", tint = Color.White)
                         }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Settings",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                     }
-                } else {
-                    SettingItem(Icons.Default.Link, "Connect AniList", "Sync anime & manga progress", { navController.navigate("anilist_login") })
+
+                    // Saikou logo (using app icon)
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "S",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
 
-            item { SettingItem(Icons.Default.TrackChanges, "MyAnimeList", "Coming soon - Connect MAL account", {}) }
+            // Common section
+            item { SectionTitle("Common") }
 
-            // Preferred tracking service selector
+            // Theme - Multi-choice with icon buttons
             item {
-                val preferredService by viewModel.preferredTrackingService.collectAsState()
-                SettingItem(
-                    Icons.Default.Star,
-                    "Preferred Tracking Service",
-                    if (preferredService == "anilist") "AniList (showing AniList stats)" else "MyAnimeList (showing MAL stats)",
-                    {
-                        // Toggle between anilist and mal
-                        viewModel.setPreferredTrackingService(
-                            if (preferredService == "anilist") "mal" else "anilist"
+                SettingRow(
+                    title = "Theme",
+                    leftIcon = null
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        IconToggle(
+                            icon = Icons.Default.Settings,
+                            selected = darkMode == "system",
+                            onClick = { viewModel.setDarkMode("system") }
                         )
+                        IconToggle(
+                            icon = Icons.Default.DarkMode,
+                            selected = darkMode == "dark",
+                            onClick = { viewModel.setDarkMode("dark") }
+                        )
+                        IconToggle(
+                            icon = Icons.Default.LightMode,
+                            selected = darkMode == "light",
+                            onClick = { viewModel.setDarkMode("light") }
+                        )
+                    }
+                }
+            }
+
+            // Default Start Up Tab
+            item {
+                SettingRow(
+                    title = "Default Start Up Tab",
+                    leftIcon = null
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        IconToggle(
+                            icon = Icons.Default.Movie,
+                            selected = true,
+                            onClick = {}
+                        )
+                        IconToggle(
+                            icon = Icons.Default.Home,
+                            selected = false,
+                            onClick = {}
+                        )
+                        IconToggle(
+                            icon = Icons.Default.Book,
+                            selected = false,
+                            onClick = {}
+                        )
+                    }
+                }
+            }
+
+            // UI Settings - Navigation item
+            item {
+                SettingNavigationRow(
+                    icon = Icons.Default.Palette,
+                    title = "UI Settings",
+                    onClick = {
+                        // Navigate to sub-screen or show dialog
                     }
                 )
             }
 
-            item { SettingToggle(Icons.Default.AutoMode, "Auto-sync Progress", "Automatically sync watch/read progress", false, {}) }
+            // Selected DNS - Dropdown style
+            item {
+                SettingRow(
+                    title = "Selected DNS",
+                    subtitle = "Change if your ISP blocks any Source",
+                    leftIcon = Icons.Default.Dns
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF1a1a1a),
+                        modifier = Modifier
+                            .width(150.dp)
+                            .clickable { showDnsDialog = true }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "CLOUDFLARE",
+                                fontSize = 14.sp,
+                                color = Color.White,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
 
             item { Spacer(Modifier.height(8.dp)) }
 
-            // ==================== APPEARANCE ====================
+            // Toggles
+            item {
+                SettingToggleRow(
+                    icon = Icons.Default.Download,
+                    title = "Download in SD card",
+                    checked = false,
+                    onCheckedChange = {}
+                )
+            }
+
+            item {
+                SettingToggleRow(
+                    icon = Icons.Default.Update,
+                    title = "Only show My Shows in Recently Updated",
+                    checked = false,
+                    onCheckedChange = {}
+                )
+            }
+
+            item {
+                SettingToggleRow(
+                    icon = Icons.Default.VideoLibrary,
+                    title = "Show Youtube link",
+                    checked = false,
+                    onCheckedChange = {}
+                )
+            }
+
+            item { Spacer(Modifier.height(8.dp)) }
+
+            // Account section
+            item { SectionTitle("Account") }
+
+            item {
+                if (isAniListConnected && anilistUsername != null) {
+                    SettingRow(
+                        title = "AniList",
+                        subtitle = "Connected as $anilistUsername",
+                        leftIcon = Icons.Default.AccountCircle
+                    ) {
+                        TextButton(onClick = { authManager.logout() }) {
+                            Text("Disconnect", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                } else {
+                    SettingNavigationRow(
+                        icon = Icons.Default.Link,
+                        title = "Connect AniList",
+                        subtitle = "Sync anime & manga progress",
+                        onClick = { navController.navigate("anilist_login") }
+                    )
+                }
+            }
+
+            item { Spacer(Modifier.height(8.dp)) }
+
+            // Appearance section
             item { SectionTitle("Appearance") }
 
-            item { SettingItem(Icons.Default.Palette, "Theme", darkMode.replaceFirstChar { it.uppercase() }, { showThemePicker = true }) }
-            item { SettingItem(Icons.Default.ColorLens, "Accent Color", colorScheme.replaceFirstChar { it.uppercase() }, { showColorPicker = true }) }
-            item { SettingToggle(Icons.Default.DarkMode, "AMOLED Mode", "Pure black background for OLED screens", false, {}) }
-            item { SettingToggle(Icons.Default.Contrast, "Material You", "Dynamic colors from wallpaper", true, {}) }
-            item { SettingItem(Icons.Default.GridView, "Grid Size", "3 columns", {}) }
-            item { SettingToggle(Icons.Default.ViewCompact, "Compact View", "Smaller cards and spacing", false, {}) }
+            item {
+                SettingNavigationRow(
+                    icon = Icons.Default.ColorLens,
+                    title = "Accent Color",
+                    subtitle = colorScheme.replaceFirstChar { it.uppercase() },
+                    onClick = {}
+                )
+            }
+
+            item {
+                SettingToggleRow(
+                    icon = Icons.Default.Contrast,
+                    title = "AMOLED Mode",
+                    checked = true,
+                    onCheckedChange = {}
+                )
+            }
 
             item { Spacer(Modifier.height(8.dp)) }
 
-            // ==================== PLAYER ====================
-            item { SectionTitle("Video Player") }
+            // Player section
+            item { SectionTitle("Player") }
 
-            item { SettingItem(Icons.Default.HighQuality, "Default Quality", "Auto (1080p preferred)", {}) }
-            item { SettingItem(Icons.Default.Speed, "Playback Speed", "1.0x", {}) }
-            item { SettingToggle(Icons.Default.SkipNext, "Auto Skip Intro", "Skip detected intro sequences", false, {}) }
-            item { SettingToggle(Icons.Default.SkipNext, "Auto Skip Outro", "Skip ending credits", false, {}) }
-            item { SettingToggle(Icons.Default.AutoAwesome, "Auto Play Next", "Continue to next episode automatically", true, {}) }
-            item { SettingItem(Icons.Default.TouchApp, "Gesture Controls", "Configure player gestures", {}) }
-            item { SettingItem(Icons.Default.Timer, "Skip Times", "Intro: 85s, Outro: 90s", {}) }
-            item { SettingToggle(Icons.Default.PictureInPicture, "Picture-in-Picture", "Enable PiP mode", true, {}) }
-            item { SettingToggle(Icons.Default.Subtitles, "Show Subtitles", "Display subtitles by default", true, {}) }
-            item { SettingItem(Icons.Default.TextFields, "Subtitle Style", "Font size, color, background", {}) }
+            item {
+                SettingNavigationRow(
+                    icon = Icons.Default.HighQuality,
+                    title = "Default Quality",
+                    subtitle = "Auto (1080p preferred)",
+                    onClick = {}
+                )
+            }
+
+            item {
+                SettingToggleRow(
+                    icon = Icons.Default.SkipNext,
+                    title = "Auto Skip Intro",
+                    checked = false,
+                    onCheckedChange = {}
+                )
+            }
+
+            item {
+                SettingToggleRow(
+                    icon = Icons.Default.AutoAwesome,
+                    title = "Auto Play Next",
+                    checked = true,
+                    onCheckedChange = {}
+                )
+            }
 
             item { Spacer(Modifier.height(8.dp)) }
 
-            // ==================== READER ====================
-            item { SectionTitle("Manga Reader") }
-
-            item { SettingItem(Icons.Default.ChromeReaderMode, "Default Reading Mode", "Vertical Continuous", {}) }
-            item { SettingItem(Icons.Default.SwapHoriz, "Page Turn", "Tap zones", {}) }
-            item { SettingToggle(Icons.Default.VolumeUp, "Volume Key Navigation", "Use volume buttons to turn pages", false, {}) }
-            item { SettingItem(Icons.Default.AspectRatio, "Image Scaling", "Fit Width", {}) }
-            item { SettingToggle(Icons.Default.Contrast, "Color Filter", "Adjust brightness/contrast", false, {}) }
-            item { SettingToggle(Icons.Default.WbSunny, "Keep Screen On", "Prevent sleep while reading", true, {}) }
-            item { SettingToggle(Icons.Default.Numbers, "Show Page Number", "Display page counter", true, {}) }
-            item { SettingToggle(Icons.Default.CloudDownload, "Preload Pages", "Load next chapter in advance", true, {}) }
-            item { SettingItem(Icons.Default.Cached, "Preload Amount", "Next 3 chapters", {}) }
-            item { SettingToggle(Icons.Default.Compress, "Image Compression", "Reduce image quality to save data", false, {}) }
-
-            item { Spacer(Modifier.height(8.dp)) }
-
-            // ==================== DOWNLOADS ====================
+            // Downloads section
             item { SectionTitle("Downloads") }
 
-            item { SettingItem(Icons.Default.Folder, "Download Location", "Internal Storage/OmniStream", {}) }
-            item { SettingItem(Icons.Default.HighQuality, "Video Quality", "1080p", {}) }
-            item { SettingItem(Icons.Default.FormatListNumbered, "Concurrent Downloads", "3 at a time", {}) }
-            item { SettingToggle(Icons.Default.Wifi, "Download over WiFi Only", "Prevent mobile data usage", true, {}) }
-            item { SettingToggle(Icons.Default.BatteryChargingFull, "Download While Charging Only", "Preserve battery", false, {}) }
-            item { SettingToggle(Icons.Default.Notifications, "Download Notifications", "Show progress in status bar", true, {}) }
-            item { SettingToggle(Icons.Default.AutoDelete, "Auto-Delete Watched", "Remove downloads after completion", false, {}) }
-            item { SettingItem(Icons.Default.Storage, "Manage Downloads", "View and delete downloads", { navController.navigate("downloads") }) }
+            item {
+                SettingToggleRow(
+                    icon = Icons.Default.Wifi,
+                    title = "Download over WiFi Only",
+                    checked = true,
+                    onCheckedChange = {}
+                )
+            }
+
+            item {
+                SettingNavigationRow(
+                    icon = Icons.Default.Storage,
+                    title = "Manage Downloads",
+                    onClick = { navController.navigate("downloads") }
+                )
+            }
 
             item { Spacer(Modifier.height(8.dp)) }
 
-            // ==================== SECURITY ====================
-            item { SectionTitle("Security & Privacy") }
-
-            item { SettingToggle(Icons.Default.Lock, "App Lock", "Require password/fingerprint to open", false, {}) }
-            item { SettingItem(Icons.Default.Fingerprint, "Biometric Authentication", "Use fingerprint or face unlock", {}) }
-            item { SettingToggle(Icons.Default.VisibilityOff, "Incognito Mode", "Don't save history while active", false, {}) }
-            item { SettingToggle(Icons.Default.Screenshot, "Secure Screen", "Block screenshots and screen recording", false, {}) }
-            item { SettingItem(Icons.Default.DeleteForever, "Clear History", "Delete watch/read history", {}) }
-            item { SettingItem(Icons.Default.DeleteSweep, "Clear Cache", "Free up storage space", {}) }
-
-            item { Spacer(Modifier.height(8.dp)) }
-
-            // ==================== BACKUP & SYNC ====================
-            item { SectionTitle("Backup & Sync") }
-
-            item { SettingItem(Icons.Default.Backup, "Backup Data", "Export app data", {}) }
-            item { SettingItem(Icons.Default.Restore, "Restore Data", "Import from backup", {}) }
-            item { SettingToggle(Icons.Default.CloudSync, "Auto Cloud Backup", "Sync data across devices", false, {}) }
-            item { SettingItem(Icons.Default.Schedule, "Backup Frequency", "Daily at 3 AM", {}) }
-            item { SettingItem(Icons.Default.CloudUpload, "Backup Location", "Google Drive", {}) }
-
-            item { Spacer(Modifier.height(8.dp)) }
-
-            // ==================== ADVANCED ====================
-            item { SectionTitle("Advanced") }
-
-            item { SettingToggle(Icons.Default.DataSaverOn, "Data Saver Mode", "Reduce data usage", false, {}) }
-            item { SettingItem(Icons.Default.Cached, "Cache Size Limit", "500 MB", {}) }
-            item { SettingToggle(Icons.Default.Update, "Auto-Check Updates", "Check for app updates on startup", true, {}) }
-            item { SettingItem(Icons.Default.BugReport, "Debug Mode", "Enable detailed logging", {}) }
-            item { SettingToggle(Icons.Default.Analytics, "Analytics", "Help improve the app", false, {}) }
-            item { SettingToggle(Icons.Default.Report, "Crash Reports", "Send crash reports automatically", false, {}) }
-
-            item { Spacer(Modifier.height(8.dp)) }
-
-            // ==================== ABOUT ====================
+            // About section
             item { SectionTitle("About") }
 
-            item { SettingItem(Icons.Default.Info, "App Version", "1.0.0", {}) }
-            item { SettingItem(Icons.Default.Update, "Check for Updates", "Last checked: Just now", {}) }
-            item { SettingItem(Icons.Default.Code, "Open Source Licenses", "View third-party licenses", {}) }
-            item { SettingItem(Icons.Default.Policy, "Privacy Policy", "Read our privacy policy", {}) }
-            item { SettingItem(Icons.Default.Description, "Terms of Service", "Read terms and conditions", {}) }
-            item { SettingItem(Icons.Default.Favorite, "Support Development", "Donate or contribute", {}) }
+            item {
+                SettingNavigationRow(
+                    icon = Icons.Default.Info,
+                    title = "App Version",
+                    subtitle = "1.0.0",
+                    onClick = {}
+                )
+            }
 
-            item { Spacer(Modifier.height(8.dp)) }
+            item {
+                SettingNavigationRow(
+                    icon = Icons.Default.Update,
+                    title = "Check for Updates",
+                    onClick = {}
+                )
+            }
 
-            // ==================== LOGOUT ====================
-            item { SettingItem(Icons.Default.ExitToApp, "Logout", "Sign out of your account", onLogout, destructive = true) }
+            item { Spacer(Modifier.height(16.dp)) }
+
+            // Logout
+            item {
+                SettingNavigationRow(
+                    icon = Icons.Default.ExitToApp,
+                    title = "Logout",
+                    onClick = onLogout,
+                    destructive = true
+                )
+            }
 
             item { Spacer(Modifier.height(32.dp)) }
 
-            // Credits
+            // Easter egg message
             item {
                 Text(
-                    "Inspired by Saikou & Kotatsu",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    "There are few easter eggs hidden in the App",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
                     modifier = Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)
                 )
             }
+
+            item { Spacer(Modifier.height(16.dp)) }
         }
     }
 
-    // Color Picker Dialog
-    if (showColorPicker) {
-        ColorPickerDialog(
-            currentScheme = colorScheme,
-            onSchemeSelected = {
-                viewModel.setColorScheme(it)
-                showColorPicker = false
+    // DNS Dialog
+    if (showDnsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDnsDialog = false },
+            containerColor = Color(0xFF1a1a1a),
+            title = { Text("Select DNS", color = Color.White) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf("CLOUDFLARE", "GOOGLE", "ADGUARD", "NONE").forEach { dns ->
+                        Text(
+                            dns,
+                            fontSize = 16.sp,
+                            color = Color.White,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showDnsDialog = false
+                                }
+                                .padding(12.dp)
+                        )
+                    }
+                }
             },
-            onDismiss = { showColorPicker = false }
-        )
-    }
-
-    // Theme Picker Dialog
-    if (showThemePicker) {
-        ThemePickerDialog(
-            currentMode = darkMode,
-            onModeSelected = {
-                viewModel.setDarkMode(it)
-                showThemePicker = false
-            },
-            onDismiss = { showThemePicker = false }
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showDnsDialog = false }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }
@@ -284,255 +417,204 @@ fun SettingsScreen(
 private fun SectionTitle(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(vertical = 8.dp)
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = Color(0xFF8B7AFF), // Purple-blue like Saikou
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
     )
 }
 
 @Composable
-private fun SettingCard(content: @Composable () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.fillMaxWidth()
+private fun SettingRow(
+    title: String,
+    subtitle: String? = null,
+    leftIcon: ImageVector? = null,
+    content: @Composable () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            if (leftIcon != null) {
+                Icon(
+                    leftIcon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Column {
+                Text(
+                    title,
+                    fontSize = 16.sp,
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium
+                )
+                if (subtitle != null) {
+                    Text(
+                        subtitle,
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
+
         content()
     }
 }
 
 @Composable
-private fun SettingItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun SettingNavigationRow(
+    icon: ImageVector,
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     onClick: () -> Unit,
     destructive: Boolean = false
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = if (destructive)
-                    MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
-                else
-                    Color.Black.copy(alpha = 0.4f)
-            )
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1a1a1a)
-        )
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box {
-            // Glass morphism shine
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.05f),
-                                Color.Transparent
-                            )
-                        )
-                    )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (destructive) MaterialTheme.colorScheme.error else Color.White,
+                modifier = Modifier.size(24.dp)
             )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+            Column {
+                Text(
+                    title,
+                    fontSize = 16.sp,
+                    color = if (destructive) MaterialTheme.colorScheme.error else Color.White,
+                    fontWeight = FontWeight.Medium
                 )
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (destructive) MaterialTheme.colorScheme.error else Color.White
-                    )
+                if (subtitle != null) {
                     Text(
                         subtitle,
-                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 12.sp,
                         color = Color.Gray
                     )
                 }
-
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = Color.Gray
-                )
             }
         }
+
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = Color.Gray,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
 @Composable
-private fun SettingToggle(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun SettingToggleRow(
+    icon: ImageVector,
     title: String,
-    subtitle: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = Color.Black.copy(alpha = 0.4f)
-            ),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1a1a1a)
-        )
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box {
-            // Glass morphism shine
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.05f),
-                                Color.Transparent
-                            )
-                        )
-                    )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
             )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                    Text(
-                        subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
-                }
-
-                Switch(
-                    checked = checked,
-                    onCheckedChange = onCheckedChange,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.primary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        uncheckedThumbColor = Color.Gray,
-                        uncheckedTrackColor = Color.DarkGray
-                    )
-                )
-            }
+            Text(
+                title,
+                fontSize = 16.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Medium
+            )
         }
+
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                uncheckedThumbColor = Color.Gray,
+                uncheckedTrackColor = Color(0xFF2a2a2a)
+            )
+        )
     }
 }
 
 @Composable
-private fun ColorPickerDialog(
-    currentScheme: String,
-    onSchemeSelected: (String) -> Unit,
-    onDismiss: () -> Unit
+private fun IconToggle(
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
-    val schemes = listOf("purple", "ocean", "emerald", "sunset", "rose", "midnight", "crimson", "gold", "saikou")
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Choose Color Scheme") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                schemes.forEach { scheme ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSchemeSelected(scheme) }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = scheme == currentScheme,
-                            onClick = { onSchemeSelected(scheme) }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(scheme.replaceFirstChar { it.uppercase() })
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(if (selected) MaterialTheme.colorScheme.primary else Color(0xFF2a2a2a))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (selected) Color.White else Color.Gray,
+            modifier = Modifier.size(20.dp)
+        )
+    }
 }
 
-@Composable
-private fun ThemePickerDialog(
-    currentMode: String,
-    onModeSelected: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val modes = listOf("dark", "light", "system")
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    val authManager: AniListAuthManager,
+    private val userPreferences: com.omnistream.data.preferences.UserPreferences
+) : ViewModel() {
+    val colorScheme = userPreferences.colorSchemeFlow
+    val darkMode = userPreferences.darkModeFlow
+    val preferredTrackingService = userPreferences.preferredTrackingServiceFlow
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Choose Theme") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                modes.forEach { mode ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onModeSelected(mode) }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = mode == currentMode,
-                            onClick = { onModeSelected(mode) }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(mode.replaceFirstChar { it.uppercase() })
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
+    fun setColorScheme(scheme: String) {
+        userPreferences.setColorScheme(scheme)
+    }
+
+    fun setDarkMode(mode: String) {
+        userPreferences.setDarkMode(mode)
+    }
+
+    fun setPreferredTrackingService(service: String) {
+        userPreferences.setPreferredTrackingService(service)
+    }
 }
