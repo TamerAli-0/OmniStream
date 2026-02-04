@@ -149,7 +149,7 @@ fun OmniNavigation(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = if (showBottomNav) 65.dp else 0.dp)
+                .padding(bottom = if (showBottomNav) 80.dp else 0.dp)
         ) {
             NavHost(
                 navController = navController,
@@ -324,28 +324,45 @@ fun OmniNavigation(
             }
         }
 
-        // Bottom nav - Saikou style (floating over content with gradient fade)
+        // Bottom nav - Saikou style (floating, glossy, theme-aware)
         if (showBottomNav) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
             ) {
-                // No gradient - solid nav like Saikou
+                // Gradient fade above nav
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
+                                )
+                            )
+                        )
+                )
 
-                // Nav bar - 5 items with Saikou clean styling
+                // Floating glossy nav bar
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(65.dp)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        .height(70.dp)
                         .align(Alignment.BottomCenter),
-                    color = Color(0xFF121212),
-                    shadowElevation = 0.dp
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(35.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
+                    shadowElevation = 12.dp,
+                    tonalElevation = 8.dp
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -353,8 +370,6 @@ fun OmniNavigation(
                             val selected = currentDestination?.hierarchy?.any {
                                 it.route == screen.route
                             } == true
-
-                            val isCenter = index == 2 // Home in center (index 2 of 5 items)
 
                             Column(
                                 modifier = Modifier
@@ -370,24 +385,24 @@ fun OmniNavigation(
                                             restoreState = true
                                         }
                                     }
-                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 // Icon
                                 Icon(
                                     imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
                                     contentDescription = screen.title,
-                                    tint = if (selected) Color.White else Color(0xFF666666),
-                                    modifier = Modifier.size(24.dp)
+                                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(26.dp)
                                 )
 
-                                // Label - uppercase like Saikou
+                                // Label
                                 Text(
                                     text = screen.title.uppercase(),
                                     fontSize = 10.sp,
                                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selected) Color.White else Color(0xFF666666),
+                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                                     maxLines = 1,
                                     letterSpacing = 0.5.sp
                                 )
