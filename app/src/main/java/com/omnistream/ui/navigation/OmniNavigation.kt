@@ -118,13 +118,11 @@ sealed class Screen(
     )
 }
 
-// Bottom nav - 5 items like Saikou
+// Bottom nav - 3 items EXACTLY like Saikou
 val bottomNavItems = listOf(
-    Screen.Movies,      // Far left
-    Screen.Browse,      // Left
-    Screen.Home,        // Center
-    Screen.Library,     // Right
-    Screen.Manga        // Far right
+    Screen.Manga,       // Left - "ANIME" in screenshot
+    Screen.Home,        // Center - Home icon
+    Screen.Browse       // Right - Browse/More icon
 )
 
 // Auth routes (no bottom nav)
@@ -149,7 +147,7 @@ fun OmniNavigation(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = if (showBottomNav) 72.dp else 0.dp)
+                .padding(bottom = if (showBottomNav) 65.dp else 0.dp)
         ) {
             NavHost(
                 navController = navController,
@@ -331,36 +329,22 @@ fun OmniNavigation(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
             ) {
-                // Gradient fade for content behind nav
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color(0xFF0a0a0a).copy(alpha = 0.95f)
-                                )
-                            )
-                        )
-                )
+                // No gradient - solid nav like Saikou
 
-                // Nav bar container - Saikou style
+                // Nav bar - EXACTLY like Saikou (3 items only)
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(72.dp)
+                        .height(65.dp)
                         .align(Alignment.BottomCenter),
-                    color = Color(0xFF0a0a0a),
+                    color = Color(0xFF121212),
                     shadowElevation = 0.dp
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                            .padding(horizontal = 32.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceAround,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         bottomNavItems.forEachIndexed { index, screen ->
@@ -368,11 +352,10 @@ fun OmniNavigation(
                                 it.route == screen.route
                             } == true
 
-                            val isCenter = index == 2 // Home in center
+                            val isCenter = index == 1 // Home in center (index 1 of 3 items)
 
-                            Box(
+                            Column(
                                 modifier = Modifier
-                                    .weight(if (isCenter) 1.2f else 1f)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null
@@ -384,51 +367,28 @@ fun OmniNavigation(
                                             launchSingleTop = true
                                             restoreState = true
                                         }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    // Icon container with larger center
-                                    Box(
-                                        modifier = Modifier.size(if (isCenter) 32.dp else 26.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        // Glow for selected
-                                        if (selected) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(if (isCenter) 48.dp else 38.dp)
-                                                    .background(
-                                                        Brush.radialGradient(
-                                                            colors = listOf(
-                                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                                                                Color.Transparent
-                                                            )
-                                                        ),
-                                                        shape = CircleShape
-                                                    )
-                                            )
-                                        }
-                                        Icon(
-                                            imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
-                                            contentDescription = screen.title,
-                                            tint = if (selected) MaterialTheme.colorScheme.primary else Color(0xFF888888),
-                                            modifier = Modifier.size(if (isCenter) 28.dp else 22.dp)
-                                        )
                                     }
+                                    .padding(horizontal = 24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                // Icon
+                                Icon(
+                                    imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
+                                    contentDescription = screen.title,
+                                    tint = if (selected) Color.White else Color(0xFF666666),
+                                    modifier = Modifier.size(24.dp)
+                                )
 
-                                    // Label - smaller for non-center
-                                    Text(
-                                        text = screen.title,
-                                        fontSize = if (isCenter) 12.sp else 10.sp,
-                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (selected) MaterialTheme.colorScheme.primary else Color(0xFF888888),
-                                        maxLines = 1
-                                    )
-                                }
+                                // Label - uppercase like Saikou
+                                Text(
+                                    text = screen.title.uppercase(),
+                                    fontSize = 10.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selected) Color.White else Color(0xFF666666),
+                                    maxLines = 1,
+                                    letterSpacing = 0.5.sp
+                                )
                             }
                         }
                     }
