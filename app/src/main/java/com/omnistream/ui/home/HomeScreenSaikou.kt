@@ -102,7 +102,7 @@ fun HomeScreenSaikou(
                             }
                             item {
                                 HorizontalMediaList(
-                                    items = uiState.continueWatching,
+                                    items = uiState.continueWatching.map { it.toMediaItem() },
                                     onItemClick = { item ->
                                         navController.navigate("video/${item.sourceId}/${item.id}")
                                     }
@@ -117,7 +117,7 @@ fun HomeScreenSaikou(
                             }
                             item {
                                 HorizontalMediaList(
-                                    items = uiState.favoriteAnime,
+                                    items = uiState.favoriteAnime.map { it.toMediaItem() },
                                     onItemClick = { item ->
                                         navController.navigate("video/${item.sourceId}/${item.id}")
                                     }
@@ -132,7 +132,7 @@ fun HomeScreenSaikou(
                             }
                             item {
                                 HorizontalMediaList(
-                                    items = uiState.trendingAnime,
+                                    items = uiState.trendingAnime.map { it.toMediaItem() },
                                     onItemClick = { item ->
                                         navController.navigate("video/${item.sourceId}/${item.id}")
                                     }
@@ -149,7 +149,7 @@ fun HomeScreenSaikou(
                             }
                             item {
                                 HorizontalMediaList(
-                                    items = uiState.continueReading,
+                                    items = uiState.continueReading.map { it.toMediaItem() },
                                     onItemClick = { item ->
                                         navController.navigate("manga/${item.sourceId}/${item.id}")
                                     }
@@ -164,7 +164,7 @@ fun HomeScreenSaikou(
                             }
                             item {
                                 HorizontalMediaList(
-                                    items = uiState.favoriteManga,
+                                    items = uiState.favoriteManga.map { it.toMediaItem() },
                                     onItemClick = { item ->
                                         navController.navigate("manga/${item.sourceId}/${item.id}")
                                     }
@@ -179,7 +179,7 @@ fun HomeScreenSaikou(
                             }
                             item {
                                 HorizontalMediaList(
-                                    items = uiState.trendingManga,
+                                    items = uiState.trendingManga.map { it.toMediaItem() },
                                     onItemClick = { item ->
                                         navController.navigate("manga/${item.sourceId}/${item.id}")
                                     }
@@ -343,3 +343,34 @@ data class MediaItem(
     val subtitle: String?,
     val progress: Float = 0f
 )
+
+// Extension function to convert WatchHistoryEntity to MediaItem
+private fun com.omnistream.data.local.WatchHistoryEntity.toMediaItem(): MediaItem {
+    val progressPercent = if (totalDuration > 0) {
+        progressPosition.toFloat() / totalDuration.toFloat()
+    } else {
+        progressPercentage
+    }
+
+    val subtitle = when (contentType) {
+        "manga" -> if (totalChapters > 0) {
+            "Chapter ${chapterIndex + 1}/$totalChapters"
+        } else {
+            "Chapter ${chapterIndex + 1}"
+        }
+        else -> if (totalChapters > 0) {
+            "Episode ${chapterIndex + 1}/$totalChapters"
+        } else {
+            "Episode ${chapterIndex + 1}"
+        }
+    }
+
+    return MediaItem(
+        id = contentId,
+        sourceId = sourceId,
+        title = title ?: "Unknown",
+        coverUrl = coverUrl,
+        subtitle = subtitle,
+        progress = progressPercent
+    )
+}
