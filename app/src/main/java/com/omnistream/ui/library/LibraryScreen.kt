@@ -1,5 +1,7 @@
 package com.omnistream.ui.library
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -47,6 +50,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -61,6 +65,15 @@ fun LibraryScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     var isGridView by remember { mutableStateOf(true) }
+    var selectedFilter by remember { mutableStateOf("All") }
+
+    // Filter favorites based on selected filter
+    val filteredFavorites = when (selectedFilter) {
+        "Anime" -> uiState.favorites.filter { it.contentType == "video" }
+        "Manga" -> uiState.favorites.filter { it.contentType == "manga" }
+        "Movies" -> uiState.favorites.filter { it.contentType == "video" } // Can add movie-specific logic later
+        else -> uiState.favorites
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -90,6 +103,22 @@ fun LibraryScreen(
             )
         )
 
+        // Content type filter tabs
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("All", "Anime", "Manga", "Movies").forEach { filter ->
+                FilterChip(
+                    label = filter,
+                    selected = selectedFilter == filter,
+                    onClick = { selectedFilter = filter }
+                )
+            }
+        }
+
         when {
             uiState.isLoading -> {
                 Box(
@@ -113,8 +142,8 @@ fun LibraryScreen(
                     }
                 }
             }
-            uiState.favorites.isEmpty() -> {
-                EmptyLibraryState()
+            filteredFavorites.isEmpty() -> {
+                EmptyLibraryState(filter = selectedFilter)
             }
             else -> {
                 LazyVerticalGrid(
@@ -124,7 +153,7 @@ fun LibraryScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(uiState.favorites) { entry ->
+                    items(filteredFavorites) { entry ->
                         val onItemClick = {
                             val encodedId = java.net.URLEncoder.encode(entry.contentId, "UTF-8")
                             val route = if (entry.contentType == "manga") {
@@ -256,7 +285,33 @@ private fun LibraryListCard(
 }
 
 @Composable
-private fun EmptyLibraryState() {
+private fun FilterChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = if (selected) Color(0xFF4ECDC4) else Color(0xFF1a1a1a),
+        modifier = Modifier.height(36.dp)
+    ) {
+        Box(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                color = if (selected) Color.Black else Color.White
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyLibraryState(filter: String = "All") {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -272,12 +327,12 @@ private fun EmptyLibraryState() {
                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
             )
             Text(
-                "No favorites yet",
+                if (filter == "All") "No favorites yet" else "No $filter favorites",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
             Text(
-                "Add manga or videos to see them here",
+                if (filter == "All") "Add manga or videos to see them here" else "Add $filter to see them here",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
             )

@@ -118,11 +118,13 @@ sealed class Screen(
     )
 }
 
-// Bottom nav - 3 items EXACTLY like Saikou
+// Bottom nav - 5 items with Saikou styling
 val bottomNavItems = listOf(
-    Screen.Manga,       // Left - "ANIME" in screenshot
-    Screen.Home,        // Center - Home icon
-    Screen.Browse       // Right - Browse/More icon
+    Screen.Movies,      // Left
+    Screen.Browse,      // Left-center
+    Screen.Home,        // Center
+    Screen.Library,     // Right-center
+    Screen.Manga        // Right
 )
 
 // Auth routes (no bottom nav)
@@ -331,7 +333,7 @@ fun OmniNavigation(
             ) {
                 // No gradient - solid nav like Saikou
 
-                // Nav bar - EXACTLY like Saikou (3 items only)
+                // Nav bar - 5 items with Saikou clean styling
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -343,8 +345,8 @@ fun OmniNavigation(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 32.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceAround,
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         bottomNavItems.forEachIndexed { index, screen ->
@@ -352,7 +354,7 @@ fun OmniNavigation(
                                 it.route == screen.route
                             } == true
 
-                            val isCenter = index == 1 // Home in center (index 1 of 3 items)
+                            val isCenter = index == 2 // Home in center (index 2 of 5 items)
 
                             Column(
                                 modifier = Modifier
@@ -368,7 +370,7 @@ fun OmniNavigation(
                                             restoreState = true
                                         }
                                     }
-                                    .padding(horizontal = 24.dp),
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
