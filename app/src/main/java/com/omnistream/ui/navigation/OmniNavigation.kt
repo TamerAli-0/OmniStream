@@ -17,16 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.VideoLibrary
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -83,6 +75,13 @@ sealed class Screen(
         unselectedIcon = Icons.Outlined.Home
     )
 
+    data object Movies : Screen(
+        route = "movies",
+        title = "Movies",
+        selectedIcon = Icons.Filled.Movie,
+        unselectedIcon = Icons.Outlined.Movie
+    )
+
     data object Browse : Screen(
         route = "browse",
         title = "Browse",
@@ -104,6 +103,13 @@ sealed class Screen(
         unselectedIcon = Icons.Outlined.VideoLibrary
     )
 
+    data object Manga : Screen(
+        route = "manga_home",
+        title = "Manga",
+        selectedIcon = Icons.Filled.Book,
+        unselectedIcon = Icons.Outlined.Book
+    )
+
     data object Downloads : Screen(
         route = "downloads",
         title = "Downloads",
@@ -112,12 +118,13 @@ sealed class Screen(
     )
 }
 
-// Bottom nav items - Browse merged into Home
+// Bottom nav - 5 items like Saikou
 val bottomNavItems = listOf(
-    Screen.Home,
-    Screen.Search,
-    Screen.Library,
-    Screen.Downloads
+    Screen.Movies,      // Far left
+    Screen.Browse,      // Left
+    Screen.Home,        // Center
+    Screen.Library,     // Right
+    Screen.Manga        // Far right
 )
 
 // Auth routes (no bottom nav)
@@ -142,7 +149,7 @@ fun OmniNavigation(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = if (showBottomNav) 80.dp else 0.dp)
+                .padding(bottom = if (showBottomNav) 72.dp else 0.dp)
         ) {
             NavHost(
                 navController = navController,
@@ -202,6 +209,11 @@ fun OmniNavigation(
                     HomeScreen(navController = navController)
                 }
 
+                composable(Screen.Movies.route) {
+                    // Movies/TV Shows screen (filtered browse)
+                    BrowseScreen(navController = navController)
+                }
+
                 composable(Screen.Browse.route) {
                     BrowseScreen(navController = navController)
                 }
@@ -212,6 +224,11 @@ fun OmniNavigation(
 
                 composable(Screen.Library.route) {
                     LibraryScreen(navController = navController)
+                }
+
+                composable(Screen.Manga.route) {
+                    // Manga/Anime screen (filtered browse)
+                    BrowseScreen(navController = navController)
                 }
 
                 composable(Screen.Downloads.route) {
@@ -330,30 +347,32 @@ fun OmniNavigation(
                         )
                 )
 
-                // Nav bar container
+                // Nav bar container - Saikou style
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(80.dp)
+                        .height(72.dp)
                         .align(Alignment.BottomCenter),
-                    color = Color(0xFF0a0a0a).copy(alpha = 0.98f),
+                    color = Color(0xFF0a0a0a),
                     shadowElevation = 0.dp
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        bottomNavItems.forEach { screen ->
+                        bottomNavItems.forEachIndexed { index, screen ->
                             val selected = currentDestination?.hierarchy?.any {
                                 it.route == screen.route
                             } == true
 
-                            Column(
+                            val isCenter = index == 2 // Home in center
+
+                            Box(
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .weight(if (isCenter) 1.2f else 1f)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null
@@ -366,46 +385,50 @@ fun OmniNavigation(
                                             restoreState = true
                                         }
                                     },
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                contentAlignment = Alignment.Center
                             ) {
-                                // Icon with glow effect
-                                Box(
-                                    modifier = Modifier.size(28.dp),
-                                    contentAlignment = Alignment.Center
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
-                                    if (selected) {
-                                        // Glow background
-                                        Box(
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .background(
-                                                    Brush.radialGradient(
-                                                        colors = listOf(
-                                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                                            Color.Transparent
-                                                        )
-                                                    ),
-                                                    shape = CircleShape
-                                                )
+                                    // Icon container with larger center
+                                    Box(
+                                        modifier = Modifier.size(if (isCenter) 32.dp else 26.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        // Glow for selected
+                                        if (selected) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(if (isCenter) 48.dp else 38.dp)
+                                                    .background(
+                                                        Brush.radialGradient(
+                                                            colors = listOf(
+                                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                                                Color.Transparent
+                                                            )
+                                                        ),
+                                                        shape = CircleShape
+                                                    )
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
+                                            contentDescription = screen.title,
+                                            tint = if (selected) MaterialTheme.colorScheme.primary else Color(0xFF888888),
+                                            modifier = Modifier.size(if (isCenter) 28.dp else 22.dp)
                                         )
                                     }
-                                    Icon(
-                                        imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
-                                        contentDescription = screen.title,
-                                        tint = if (selected) MaterialTheme.colorScheme.primary else Color(0xFF666666),
-                                        modifier = Modifier.size(24.dp)
+
+                                    // Label - smaller for non-center
+                                    Text(
+                                        text = screen.title,
+                                        fontSize = if (isCenter) 12.sp else 10.sp,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (selected) MaterialTheme.colorScheme.primary else Color(0xFF888888),
+                                        maxLines = 1
                                     )
                                 }
-
-                                // Label
-                                Text(
-                                    text = screen.title,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (selected) MaterialTheme.colorScheme.primary else Color(0xFF666666),
-                                    maxLines = 1
-                                )
                             }
                         }
                     }
