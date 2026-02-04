@@ -423,10 +423,11 @@ fun OmniNavigation(
                             val itemWidth = availableWidth / itemCount
                             val bubbleWidth = 60.dp
 
-                            // Position: (item space * index) + center within item + row padding offset
+                            // Position: (item space * index) + center within item + padding
+                            // Reduced padding offset to fix "too much to right" issue
                             val bubbleOffset = (itemWidth * indicatorOffset) +
                                               ((itemWidth - bubbleWidth) / 2) +
-                                              rowHorizontalPadding
+                                              (rowHorizontalPadding / 2) + 6.dp
 
                             Surface(
                                 modifier = Modifier

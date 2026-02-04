@@ -29,19 +29,19 @@ class BrowseViewModel @Inject constructor(
     }
 
     fun setFilter(filterType: String?) {
-        if (currentFilter != filterType) {
-            currentFilter = filterType
-            // Clear old content when filter changes
-            _uiState.value = _uiState.value.copy(
-                sources = emptyList(),
-                selectedSourceIndex = -1,
-                mangaItems = emptyList(),
-                videoItems = emptyList(),
-                isLoading = false,
-                error = null
-            )
-            loadSources()
-        }
+        android.util.Log.d("BrowseViewModel", "setFilter called with: $filterType (current: $currentFilter)")
+        // Always reload when filter is set, even if same (to ensure fresh content)
+        currentFilter = filterType
+        // Clear old content immediately
+        _uiState.value = _uiState.value.copy(
+            sources = emptyList(),
+            selectedSourceIndex = -1,
+            mangaItems = emptyList(),
+            videoItems = emptyList(),
+            isLoading = true,
+            error = null
+        )
+        loadSources()
     }
 
     private fun loadSources() {
