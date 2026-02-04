@@ -14,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -32,46 +34,73 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Glossy gradient top bar
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color.Transparent
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFF1a1a2e),
+                                    Color(0xFF0f0f1e)
+                                )
+                            )
+                        )
+                        .padding(vertical = 12.dp, horizontal = 16.dp)
+                ) {
                     Text(
                         "OmniStream",
                         style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.CenterStart)
                     )
-                },
-                actions = {
-                    IconButton(onClick = { navController.navigate("settings") }) {
-                        Icon(Icons.Default.Settings, "Settings")
+                    IconButton(
+                        onClick = { navController.navigate("settings") },
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    ) {
+                        Icon(Icons.Default.Settings, "Settings", tint = Color.White)
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            // Tab selector for ANIME / MANGA
+                }
+            }
+
+            // Glossy tabs
             TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+                containerColor = Color(0xFF1a1a2e),
+                contentColor = MaterialTheme.colorScheme.primary,
+                indicator = { tabPositions ->
+                    Box(
+                        Modifier
+                            .tabIndicatorOffset(tabPositions[selectedTab])
+                            .height(4.dp)
+                            .padding(horizontal = 32.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary
+                                    )
+                                ),
+                                RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+                            )
+                    )
+                }
             ) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
                     text = {
                         Text(
-                            "ANIME",
-                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
+                            "ANIME LIST",
+                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
                 )
@@ -80,126 +109,85 @@ fun HomeScreen(
                     onClick = { selectedTab = 1 },
                     text = {
                         Text(
-                            "MANGA",
-                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
+                            "MANGA LIST",
+                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
                 )
             }
 
-            // Content based on selected tab
+            // Content
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
                 contentPadding = PaddingValues(vertical = 16.dp)
             ) {
                 when (selectedTab) {
                     0 -> {
                         // ANIME TAB
-                        // Continue Watching section
                         if (uiState.continueWatching.isNotEmpty()) {
+                            item { GlossySectionHeader("Continue Watching") }
                             item {
-                                SectionHeader("Continue Watching")
-                            }
-                            item {
-                                HorizontalMediaList(
+                                GlossyMediaRow(
                                     items = uiState.continueWatching.map { it.toMediaItem() },
-                                    onItemClick = { item ->
-                                        navController.navigate("video/${item.sourceId}/${item.id}")
-                                    }
+                                    onItemClick = { navController.navigate("video/${it.sourceId}/${it.id}") }
                                 )
                             }
                         }
 
-                        // Favourite Anime section
                         if (uiState.favoriteAnime.isNotEmpty()) {
+                            item { GlossySectionHeader("Favourite Anime") }
                             item {
-                                SectionHeader("Favourite Anime")
-                            }
-                            item {
-                                HorizontalMediaList(
+                                GlossyMediaRow(
                                     items = uiState.favoriteAnime.map { it.toMediaItem() },
-                                    onItemClick = { item ->
-                                        navController.navigate("video/${item.sourceId}/${item.id}")
-                                    }
+                                    onItemClick = { navController.navigate("video/${it.sourceId}/${it.id}") }
                                 )
                             }
                         }
 
-                        // Trending Anime
                         if (uiState.trendingAnime.isNotEmpty()) {
+                            item { GlossySectionHeader("Trending Now") }
                             item {
-                                SectionHeader("Trending Now")
-                            }
-                            item {
-                                HorizontalMediaList(
+                                GlossyMediaRow(
                                     items = uiState.trendingAnime.map { it.toMediaItem() },
-                                    onItemClick = { item ->
-                                        navController.navigate("video/${item.sourceId}/${item.id}")
-                                    }
+                                    onItemClick = { navController.navigate("video/${it.sourceId}/${it.id}") }
                                 )
                             }
                         }
                     }
                     1 -> {
                         // MANGA TAB
-                        // Continue Reading section
                         if (uiState.continueReading.isNotEmpty()) {
+                            item { GlossySectionHeader("Continue Reading") }
                             item {
-                                SectionHeader("Continue Reading")
-                            }
-                            item {
-                                HorizontalMediaList(
+                                GlossyMediaRow(
                                     items = uiState.continueReading.map { it.toMediaItem() },
-                                    onItemClick = { item ->
-                                        navController.navigate("manga/${item.sourceId}/${item.id}")
-                                    }
+                                    onItemClick = { navController.navigate("manga/${it.sourceId}/${it.id}") }
                                 )
                             }
                         }
 
-                        // Favourite Manga section
                         if (uiState.favoriteManga.isNotEmpty()) {
+                            item { GlossySectionHeader("Favourite Manga") }
                             item {
-                                SectionHeader("Favourite Manga")
-                            }
-                            item {
-                                HorizontalMediaList(
+                                GlossyMediaRow(
                                     items = uiState.favoriteManga.map { it.toMediaItem() },
-                                    onItemClick = { item ->
-                                        navController.navigate("manga/${item.sourceId}/${item.id}")
-                                    }
+                                    onItemClick = { navController.navigate("manga/${it.sourceId}/${it.id}") }
                                 )
                             }
                         }
 
-                        // Trending Manga
                         if (uiState.trendingManga.isNotEmpty()) {
+                            item { GlossySectionHeader("Trending Now") }
                             item {
-                                SectionHeader("Trending Now")
-                            }
-                            item {
-                                HorizontalMediaList(
+                                GlossyMediaRow(
                                     items = uiState.trendingManga.map { it.toMediaItem() },
-                                    onItemClick = { item ->
-                                        navController.navigate("manga/${item.sourceId}/${item.id}")
-                                    }
+                                    onItemClick = { navController.navigate("manga/${it.sourceId}/${it.id}") }
                                 )
                             }
                         }
-                    }
-                }
-
-                // Empty state
-                if ((selectedTab == 0 && uiState.continueWatching.isEmpty() && uiState.favoriteAnime.isEmpty() && uiState.trendingAnime.isEmpty()) ||
-                    (selectedTab == 1 && uiState.continueReading.isEmpty() && uiState.favoriteManga.isEmpty() && uiState.trendingManga.isEmpty())) {
-                    item {
-                        EmptyState(
-                            icon = if (selectedTab == 0) Icons.Default.Tv else Icons.Default.Book,
-                            message = if (selectedTab == 0) "Start watching anime!" else "Start reading manga!",
-                            onActionClick = {
-                                navController.navigate(if (selectedTab == 0) "browse" else "search")
-                            }
-                        )
                     }
                 }
             }
@@ -208,18 +196,18 @@ fun HomeScreen(
 }
 
 @Composable
-private fun SectionHeader(title: String) {
+private fun GlossySectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
+        color = Color.White,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
     )
 }
 
 @Composable
-private fun HorizontalMediaList(
+private fun GlossyMediaRow(
     items: List<MediaItem>,
     onItemClick: (MediaItem) -> Unit
 ) {
@@ -228,53 +216,63 @@ private fun HorizontalMediaList(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(items) { item ->
-            MediaCard(
-                item = item,
-                onClick = { onItemClick(item) }
-            )
+            GlossyMediaCard(item, onItemClick)
         }
     }
 }
 
 @Composable
-private fun MediaCard(
+private fun GlossyMediaCard(
     item: MediaItem,
-    onClick: () -> Unit
+    onItemClick: (MediaItem) -> Unit
 ) {
     Column(
         modifier = Modifier
-            .width(120.dp)
-            .clickable(onClick = onClick)
+            .width(140.dp)
+            .clickable { onItemClick(item) }
     ) {
-        // Cover image
+        // Glossy card with shadow and elevation
         Surface(
             modifier = Modifier
-                .width(120.dp)
-                .height(170.dp),
-            shape = RoundedCornerShape(12.dp),
-            shadowElevation = 4.dp
+                .width(140.dp)
+                .height(200.dp)
+                .shadow(8.dp, RoundedCornerShape(16.dp)),
+            shape = RoundedCornerShape(16.dp),
+            tonalElevation = 4.dp
         ) {
-            AsyncImage(
-                model = item.coverUrl,
-                contentDescription = item.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            Box {
+                AsyncImage(
+                    model = item.coverUrl,
+                    contentDescription = item.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
 
-            // Progress overlay if watching/reading
-            if (item.progress > 0f) {
+                // Gradient overlay at bottom
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.3f))
-                ) {
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.8f)
+                                ),
+                                startY = 100f
+                            )
+                        )
+                )
+
+                // Progress bar
+                if (item.progress > 0f) {
                     LinearProgressIndicator(
                         progress = { item.progress },
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(4.dp)
                             .align(Alignment.BottomCenter),
                         color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color.White.copy(alpha = 0.3f)
+                        trackColor = Color.White.copy(alpha = 0.2f)
                     )
                 }
             }
@@ -286,51 +284,22 @@ private fun MediaCard(
         Text(
             text = item.title,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(120.dp)
+            modifier = Modifier.width(140.dp)
         )
 
-        // Subtitle (episode/chapter info)
+        // Subtitle
         if (item.subtitle != null) {
             Text(
                 text = item.subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                color = Color.Gray,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-        }
-    }
-}
-
-@Composable
-private fun EmptyState(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    message: String,
-    onActionClick: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-        )
-        Text(
-            message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        )
-        Button(onClick = onActionClick) {
-            Text("Explore")
         }
     }
 }
@@ -344,7 +313,6 @@ data class MediaItem(
     val progress: Float = 0f
 )
 
-// Extension function to convert WatchHistoryEntity to MediaItem
 private fun com.omnistream.data.local.WatchHistoryEntity.toMediaItem(): MediaItem {
     val progressPercent = if (totalDuration > 0) {
         progressPosition.toFloat() / totalDuration.toFloat()
