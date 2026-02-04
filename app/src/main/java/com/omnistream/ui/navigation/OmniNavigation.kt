@@ -402,8 +402,8 @@ fun OmniNavigation(
                         ) {
                             val totalWidth = maxWidth - 24.dp // Account for padding
                             val itemWidth = totalWidth / itemCount
-                            val bubbleWidth = 65.dp
-                            val startOffset = (itemWidth - bubbleWidth) / 2
+                            val bubbleWidth = 62.dp
+                            val startOffset = (itemWidth - bubbleWidth) / 2 + 4.dp
 
                             Surface(
                                 modifier = Modifier
