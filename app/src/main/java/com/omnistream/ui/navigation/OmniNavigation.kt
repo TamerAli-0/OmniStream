@@ -183,6 +183,11 @@ fun OmniNavigation(
                             navController.navigate("login") {
                                 popUpTo("access_gate") { inclusive = true }
                             }
+                        },
+                        onSkipToLogin = {
+                            navController.navigate("login") {
+                                popUpTo("access_gate") { inclusive = true }
+                            }
                         }
                     )
                 }
