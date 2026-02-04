@@ -12,9 +12,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.omnistream.data.anilist.AniListAuthManager
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
 /**
  * Comprehensive settings screen combining Saikou + Kotatsu features:
@@ -27,13 +31,19 @@ import com.omnistream.data.anilist.AniListAuthManager
  * - Backup & Sync
  * - Advanced (Data Saver, Cache, Update Check)
  */
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    val authManager: AniListAuthManager
+) : ViewModel()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    authManager: AniListAuthManager,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val authManager = viewModel.authManager
     val isAniListConnected = authManager.isLoggedIn()
     val anilistUsername = authManager.getUsername()
     val anilistAvatar = authManager.getAvatar()
