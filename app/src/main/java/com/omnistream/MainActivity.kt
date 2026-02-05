@@ -109,6 +109,18 @@ class MainActivity : ComponentActivity() {
                         is StartDestination.Login -> OmniNavigation(startDestination = "login")
                         is StartDestination.Home -> OmniNavigation(startDestination = "home")
                     }
+
+                    // Show update dialog if update is available
+                    val showUpdateDialog by mainViewModel.showUpdateDialog.collectAsState()
+                    val availableUpdate by mainViewModel.availableUpdate.collectAsState()
+
+                    if (showUpdateDialog && availableUpdate != null) {
+                        com.omnistream.ui.components.UpdateDialog(
+                            update = availableUpdate!!,
+                            onDownload = { mainViewModel.downloadUpdate() },
+                            onDismiss = { mainViewModel.dismissUpdateDialog() }
+                        )
+                    }
                 }
             }
         }

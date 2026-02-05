@@ -90,3 +90,10 @@
 
 # DataStore
 -keep class androidx.datastore.*.** { *; }
+
+# DownloadManager for in-app updates
+-keep class android.app.DownloadManager { *; }
+-keep class android.app.DownloadManager$* { *; }
+
+# FileProvider for APK installation
+-keep class androidx.core.content.FileProvider { *; }

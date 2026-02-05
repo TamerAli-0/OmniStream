@@ -20,9 +20,8 @@ class UpdateRepository @Inject constructor(
     private val githubApi: GitHubApiService
 ) {
     companion object {
-        // TODO: Replace with your GitHub username and repo name
-        private const val GITHUB_OWNER = "YOUR_GITHUB_USERNAME"
-        private const val GITHUB_REPO = "omnistream"
+        private const val GITHUB_OWNER = "TamerAli-0"
+        private const val GITHUB_REPO = "OmniStream"
     }
 
     /**
