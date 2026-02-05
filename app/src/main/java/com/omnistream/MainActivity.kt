@@ -175,6 +175,9 @@ class MainActivity : ComponentActivity() {
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
 
+                            // Refresh home screen to load stats
+                            android.util.Log.d("MainActivity", "Triggering stats refresh...")
+
                             // AniListLoginScreen will auto-close by polling auth status
                         } else {
                             android.util.Log.e("MainActivity", "Failed to exchange code for token")

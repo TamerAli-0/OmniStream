@@ -36,6 +36,11 @@ class HomeViewModel @Inject constructor(
 
     fun getUsername(): String? = authManager.getUsername()
 
+    fun refreshAniListStats() {
+        android.util.Log.d("HomeViewModel", "Manual refresh of AniList stats triggered")
+        loadAniListStats()
+    }
+
     init {
         // Observe continue rows (reactive, auto-updates when progress changes)
         viewModelScope.launch {
@@ -50,6 +55,17 @@ class HomeViewModel @Inject constructor(
         }
         loadHomeContent()
         loadAniListStats()
+
+        // Periodically check for AniList login and refresh stats
+        viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(5000) // Check every 5 seconds
+                if (authManager.isLoggedIn() && _uiState.value.anilistStats == null) {
+                    android.util.Log.d("HomeViewModel", "Detected new AniList login, refreshing stats...")
+                    loadAniListStats()
+                }
+            }
+        }
     }
 
     private fun loadAniListStats() {

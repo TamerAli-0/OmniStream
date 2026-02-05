@@ -167,6 +167,17 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Refresh button - updates stats when tapped
+                            IconButton(onClick = {
+                                viewModel.loadHomeContent()
+                                viewModel.refreshAniListStats()
+                            }) {
+                                Icon(
+                                    Icons.Default.AccountCircle,
+                                    contentDescription = "Refresh Stats",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                             IconButton(onClick = { navController.navigate("search") }) {
                                 Icon(
                                     Icons.Default.Search,
