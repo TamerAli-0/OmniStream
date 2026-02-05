@@ -48,6 +48,9 @@ class UpdateManager @Inject constructor(
 
         _downloadProgress.value = DownloadState.Downloading(0)
 
+        // Start monitoring download progress
+        startProgressMonitoring(downloadManager)
+
         // Register receiver to listen for download completion
         val onComplete = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -64,6 +67,48 @@ class UpdateManager @Inject constructor(
             IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
             Context.RECEIVER_NOT_EXPORTED
         )
+    }
+
+    /**
+     * Monitor download progress and update state
+     */
+    private fun startProgressMonitoring(downloadManager: DownloadManager) {
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val runnable = object : Runnable {
+            override fun run() {
+                val id = downloadId ?: return
+
+                val query = DownloadManager.Query().setFilterById(id)
+                val cursor = downloadManager.query(query)
+
+                if (cursor.moveToFirst()) {
+                    val bytesDownloaded = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    )
+                    val bytesTotal = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    )
+                    val status = cursor.getInt(
+                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)
+                    )
+
+                    if (bytesTotal > 0) {
+                        val progress = ((bytesDownloaded * 100) / bytesTotal).toInt()
+                        _downloadProgress.value = DownloadState.Downloading(progress)
+                    }
+
+                    cursor.close()
+
+                    // Keep monitoring if still downloading
+                    if (status == DownloadManager.STATUS_RUNNING) {
+                        handler.postDelayed(this, 100) // Update every 100ms
+                    }
+                } else {
+                    cursor.close()
+                }
+            }
+        }
+        handler.post(runnable)
     }
 
     /**

@@ -121,6 +121,13 @@ class MainActivity : ComponentActivity() {
                             onDismiss = { mainViewModel.dismissUpdateDialog() }
                         )
                     }
+
+                    // Show download progress dialog
+                    val downloadProgress by mainViewModel.downloadProgress.collectAsState()
+                    com.omnistream.ui.components.DownloadProgressDialog(
+                        downloadState = downloadProgress,
+                        onDismiss = { mainViewModel.resetDownloadState() }
+                    )
                 }
             }
         }
