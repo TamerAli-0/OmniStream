@@ -24,8 +24,10 @@ class ApiService @Inject constructor() {
     private val json = Json { ignoreUnknownKeys = true }
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build()
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
@@ -100,7 +102,25 @@ class ApiService @Inject constructor() {
     private suspend fun <T> apiCall(block: suspend () -> T): Result<T> {
         return withContext(Dispatchers.IO) {
             try {
-                Result.success(block())
+                // Retry up to 3 times with exponential backoff
+                var lastException: Exception? = null
+                repeat(3) { attempt ->
+                    try {
+                        return@withContext Result.success(block())
+                    } catch (e: Exception) {
+                        lastException = e
+                        // Don't retry on authentication errors
+                        if (e is ApiException && e.code in 400..499) {
+                            throw e
+                        }
+                        // Wait before retry (exponential backoff: 2s, 4s, 8s)
+                        if (attempt < 2) {
+                            kotlinx.coroutines.delay((2000L * (1 shl attempt)))
+                        }
+                    }
+                }
+                // All retries failed
+                Result.failure(lastException ?: Exception("Unknown error"))
             } catch (e: Exception) {
                 Result.failure(e)
             }
