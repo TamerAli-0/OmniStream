@@ -22,8 +22,8 @@ android {
         applicationId = "com.omnistream"
         minSdk = 24  // Android 7.0 - covers 95%+ devices
         targetSdk = 34
-        versionCode = 4
-        versionName = "2.3.0"
+        versionCode = 5
+        versionName = "2.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
