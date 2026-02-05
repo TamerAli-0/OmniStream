@@ -257,7 +257,13 @@ class AniListApi @Inject constructor(
      * Get user's manga statistics including total chapters read
      */
     suspend fun getUserStatistics(): AniListStatistics? = withContext(Dispatchers.IO) {
-        val token = authManager.getAccessToken() ?: return@withContext null
+        val token = authManager.getAccessToken()
+        android.util.Log.d("AniListApi", "getUserStatistics - Token: ${token?.take(10)}...")
+
+        if (token == null) {
+            android.util.Log.e("AniListApi", "No access token available")
+            return@withContext null
+        }
 
         val query = """
             query {
@@ -281,6 +287,7 @@ class AniListApi @Inject constructor(
         """.trimIndent()
 
         try {
+            android.util.Log.d("AniListApi", "Sending statistics query to AniList...")
             val response = httpClient.postJson(
                 url = GRAPHQL_URL,
                 json = """{"query":"${query.replace("\n", "\\n")}"}""",
@@ -289,18 +296,39 @@ class AniListApi @Inject constructor(
                 )
             )
 
+            android.util.Log.d("AniListApi", "Response received: ${response.take(200)}")
+
             val jsonResponse = json.parseToJsonElement(response).jsonObject
-            val data = jsonResponse["data"]?.jsonObject ?: return@withContext null
-            val viewer = data["Viewer"]?.jsonObject ?: return@withContext null
-            val stats = viewer["statistics"]?.jsonObject ?: return@withContext null
+            val data = jsonResponse["data"]?.jsonObject
+            if (data == null) {
+                android.util.Log.e("AniListApi", "No data in response")
+                return@withContext null
+            }
+
+            val viewer = data["Viewer"]?.jsonObject
+            if (viewer == null) {
+                android.util.Log.e("AniListApi", "No Viewer in response")
+                return@withContext null
+            }
+
+            val stats = viewer["statistics"]?.jsonObject
+            if (stats == null) {
+                android.util.Log.e("AniListApi", "No statistics in response")
+                return@withContext null
+            }
 
             val mangaStats = stats["manga"]?.jsonObject
             val animeStats = stats["anime"]?.jsonObject
 
+            val chaptersRead = mangaStats?.get("chaptersRead")?.toString()?.toIntOrNull() ?: 0
+            val episodesWatched = animeStats?.get("episodesWatched")?.toString()?.toIntOrNull() ?: 0
+
+            android.util.Log.d("AniListApi", "Parsed stats - Chapters: $chaptersRead, Episodes: $episodesWatched")
+
             AniListStatistics(
-                chaptersRead = mangaStats?.get("chaptersRead")?.toString()?.toIntOrNull() ?: 0,
+                chaptersRead = chaptersRead,
                 mangaCount = mangaStats?.get("count")?.toString()?.toIntOrNull() ?: 0,
-                episodesWatched = animeStats?.get("episodesWatched")?.toString()?.toIntOrNull() ?: 0,
+                episodesWatched = episodesWatched,
                 animeCount = animeStats?.get("count")?.toString()?.toIntOrNull() ?: 0
             )
         } catch (e: Exception) {

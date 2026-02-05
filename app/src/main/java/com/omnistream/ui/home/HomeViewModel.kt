@@ -53,23 +53,37 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun loadAniListStats() {
-        if (!authManager.isLoggedIn()) return
+        android.util.Log.d("HomeViewModel", "loadAniListStats called")
+        android.util.Log.d("HomeViewModel", "isLoggedIn: ${authManager.isLoggedIn()}")
+
+        if (!authManager.isLoggedIn()) {
+            android.util.Log.d("HomeViewModel", "Not logged in to AniList, skipping stats")
+            return
+        }
 
         viewModelScope.launch {
             try {
+                android.util.Log.d("HomeViewModel", "Fetching AniList user and statistics...")
+
                 // Fetch user info and statistics from AniList
                 val anilistUser = anilistApi.getCurrentUser()
+                android.util.Log.d("HomeViewModel", "AniList user: ${anilistUser?.name}")
+
                 val anilistStatistics = anilistApi.getUserStatistics()
+                android.util.Log.d("HomeViewModel", "AniList stats - Chapters: ${anilistStatistics?.chaptersRead}, Episodes: ${anilistStatistics?.episodesWatched}")
 
                 // Use actual AniList statistics if available, fallback to local counts
                 if (anilistStatistics != null && anilistUser != null) {
+                    android.util.Log.d("HomeViewModel", "Using AniList statistics")
                     val stats = AniListStats(
                         episodesWatched = anilistStatistics.episodesWatched,
                         chaptersRead = anilistStatistics.chaptersRead,
                         user = anilistUser
                     )
                     _uiState.value = _uiState.value.copy(anilistStats = stats)
+                    android.util.Log.d("HomeViewModel", "Stats updated - Chapters: ${stats.chaptersRead}, Episodes: ${stats.episodesWatched}")
                 } else {
+                    android.util.Log.d("HomeViewModel", "Falling back to local watch history")
                     // Fallback: Calculate from local watch history
                     kotlinx.coroutines.flow.combine(
                         watchHistoryRepository.getContinueWatching(),
@@ -82,6 +96,7 @@ class HomeViewModel @Inject constructor(
                         )
                     }.collect { stats ->
                         _uiState.value = _uiState.value.copy(anilistStats = stats)
+                        android.util.Log.d("HomeViewModel", "Local stats - Chapters: ${stats.chaptersRead}, Episodes: ${stats.episodesWatched}")
                     }
                 }
             } catch (e: Exception) {

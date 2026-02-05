@@ -202,7 +202,13 @@ class MainActivity : ComponentActivity() {
     private suspend fun exchangeCodeForToken(code: String): String? {
         return withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val client = okhttp3.OkHttpClient()
+                // Create OkHttp client with longer timeouts for AniList OAuth
+                val client = okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                    .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+
                 val formBody = okhttp3.FormBody.Builder()
                     .add("grant_type", "authorization_code")
                     .add("client_id", com.omnistream.data.anilist.AniListAuthManager.CLIENT_ID)
@@ -216,21 +222,42 @@ class MainActivity : ComponentActivity() {
                     .post(formBody)
                     .build()
 
+                android.util.Log.d("MainActivity", "Exchanging code for token...")
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string()
 
-                android.util.Log.d("MainActivity", "Token exchange response: $responseBody")
+                android.util.Log.d("MainActivity", "Token exchange response code: ${response.code}")
+                android.util.Log.d("MainActivity", "Token exchange response: ${responseBody?.take(100)}")
 
                 if (response.isSuccessful && responseBody != null) {
                     // Parse JSON to extract access_token
                     val jsonResponse = org.json.JSONObject(responseBody)
-                    jsonResponse.optString("access_token", null)
+                    val token = jsonResponse.optString("access_token", null)
+                    android.util.Log.d("MainActivity", "Token extracted: ${token?.take(10)}...")
+                    token
                 } else {
-                    android.util.Log.e("MainActivity", "Token exchange failed: ${response.code}")
+                    android.util.Log.e("MainActivity", "Token exchange failed: ${response.code} - $responseBody")
                     null
                 }
+            } catch (e: java.net.SocketTimeoutException) {
+                android.util.Log.e("MainActivity", "Timeout during token exchange", e)
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        this@MainActivity,
+                        "Connection timeout. Check your internet connection.",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+                null
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "Exception during token exchange", e)
+                withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        this@MainActivity,
+                        "Error: ${e.message}",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
                 null
             }
         }
