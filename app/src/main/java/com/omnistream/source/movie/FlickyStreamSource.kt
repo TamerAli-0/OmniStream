@@ -220,9 +220,11 @@ class FlickyStreamSource(
                 try {
                     val item = element as? JsonObject ?: return@mapNotNull null
                     val id = (item["id"] as? kotlinx.serialization.json.JsonPrimitive)?.content ?: return@mapNotNull null
-                    val title = (item["title"] as? kotlinx.serialization.json.JsonPrimitive)?.content
+                    val rawTitle = (item["title"] as? kotlinx.serialization.json.JsonPrimitive)?.content
                         ?: (item["name"] as? kotlinx.serialization.json.JsonPrimitive)?.content
                         ?: return@mapNotNull null
+                    // Decode URL-encoded characters (+ to space, %20 to space, etc.)
+                    val title = java.net.URLDecoder.decode(rawTitle.replace("+", " "), "UTF-8")
                     val posterPath = (item["poster_path"] as? kotlinx.serialization.json.JsonPrimitive)?.content
                     val releaseDate = (item["release_date"] as? kotlinx.serialization.json.JsonPrimitive)?.content
                         ?: (item["first_air_date"] as? kotlinx.serialization.json.JsonPrimitive)?.content
@@ -284,7 +286,9 @@ class FlickyStreamSource(
 
     private fun parseFlickyItem(item: FlickyItem): Video? {
         val videoId = item.id?.toString() ?: item.slug ?: return null
-        val title = item.title ?: item.name ?: return null
+        val rawTitle = item.title ?: item.name ?: return null
+        // Decode URL-encoded characters (+ to space, %20 to space, etc.)
+        val title = java.net.URLDecoder.decode(rawTitle.replace("+", " "), "UTF-8")
 
         return Video(
             id = videoId,

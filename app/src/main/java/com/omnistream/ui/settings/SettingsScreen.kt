@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,7 +47,7 @@ fun SettingsScreen(
     var showDnsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = Color(0xFF0a0a0a)
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -66,31 +67,42 @@ fun SettingsScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.Default.ArrowBack, "Back", tint = Color.White)
+                            Icon(Icons.Default.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onBackground)
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "Settings",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
 
-                    // Saikou logo (using app icon)
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "S",
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                    // AniList avatar
+                    if (isAniListConnected && anilistAvatar != null) {
+                        AsyncImage(
+                            model = anilistAvatar,
+                            contentDescription = "AniList Avatar",
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "S",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
                     }
                 }
             }
@@ -183,13 +195,13 @@ fun SettingsScreen(
                             Text(
                                 "CLOUDFLARE",
                                 fontSize = 14.sp,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier.weight(1f)
                             )
                             Icon(
                                 Icons.Default.ArrowDropDown,
                                 contentDescription = null,
-                                tint = Color.Gray,
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -234,11 +246,62 @@ fun SettingsScreen(
 
             item {
                 if (isAniListConnected && anilistUsername != null) {
-                    SettingRow(
-                        title = "AniList",
-                        subtitle = "Connected as $anilistUsername",
-                        leftIcon = Icons.Default.AccountCircle
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF1a1a1a), RoundedCornerShape(12.dp))
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            // AniList Avatar
+                            if (anilistAvatar != null) {
+                                Surface(
+                                    shape = CircleShape,
+                                    modifier = Modifier.size(48.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    AsyncImage(
+                                        model = anilistAvatar,
+                                        contentDescription = "AniList Avatar",
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            } else {
+                                Surface(
+                                    shape = CircleShape,
+                                    modifier = Modifier.size(48.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    Icon(
+                                        Icons.Default.AccountCircle,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize().padding(8.dp),
+                                        tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            }
+
+                            Column {
+                                Text(
+                                    "AniList",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Text(
+                                    "Connected as $anilistUsername",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+
                         TextButton(onClick = { authManager.logout() }) {
                             Text("Disconnect", color = MaterialTheme.colorScheme.error)
                         }
@@ -359,7 +422,9 @@ fun SettingsScreen(
                 SettingNavigationRow(
                     icon = Icons.Default.ExitToApp,
                     title = "Logout",
-                    onClick = onLogout,
+                    onClick = {
+                        viewModel.logout(onLoggedOut = onLogout)
+                    },
                     destructive = true
                 )
             }
@@ -371,7 +436,7 @@ fun SettingsScreen(
                 Text(
                     "There are few easter eggs hidden in the App",
                     fontSize = 12.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)
                 )
             }
@@ -385,14 +450,14 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { showDnsDialog = false },
             containerColor = Color(0xFF1a1a1a),
-            title = { Text("Select DNS", color = Color.White) },
+            title = { Text("Select DNS", color = MaterialTheme.colorScheme.onBackground) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf("CLOUDFLARE", "GOOGLE", "ADGUARD", "NONE").forEach { dns ->
                         Text(
                             dns,
                             fontSize = 16.sp,
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
@@ -447,7 +512,7 @@ private fun SettingRow(
                 Icon(
                     leftIcon,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -456,14 +521,14 @@ private fun SettingRow(
                 Text(
                     title,
                     fontSize = 16.sp,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Medium
                 )
                 if (subtitle != null) {
                     Text(
                         subtitle,
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
             }
@@ -497,7 +562,7 @@ private fun SettingNavigationRow(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = if (destructive) MaterialTheme.colorScheme.error else Color.White,
+                tint = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.size(24.dp)
             )
 
@@ -505,14 +570,14 @@ private fun SettingNavigationRow(
                 Text(
                     title,
                     fontSize = 16.sp,
-                    color = if (destructive) MaterialTheme.colorScheme.error else Color.White,
+                    color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Medium
                 )
                 if (subtitle != null) {
                     Text(
                         subtitle,
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
             }
@@ -521,7 +586,7 @@ private fun SettingNavigationRow(
         Icon(
             Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = Color.Gray,
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.size(20.dp)
         )
     }
@@ -549,14 +614,14 @@ private fun SettingToggleRow(
             Icon(
                 icon,
                 contentDescription = null,
-                tint = Color.White,
+                tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.size(24.dp)
             )
 
             Text(
                 title,
                 fontSize = 16.sp,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -567,7 +632,7 @@ private fun SettingToggleRow(
             colors = SwitchDefaults.colors(
                 checkedThumbColor = MaterialTheme.colorScheme.primary,
                 checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                uncheckedThumbColor = Color.Gray,
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 uncheckedTrackColor = Color(0xFF2a2a2a)
             )
         )
@@ -591,7 +656,7 @@ private fun IconToggle(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (selected) Color.White else Color.Gray,
+            tint = if (selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             modifier = Modifier.size(20.dp)
         )
     }

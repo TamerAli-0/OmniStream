@@ -21,6 +21,7 @@ class UserPreferences @Inject constructor(
 ) {
     companion object {
         private val IS_UNLOCKED = booleanPreferencesKey("is_unlocked")
+        private val HAS_LOGGED_IN_BEFORE = booleanPreferencesKey("has_logged_in_before")
         private val AUTH_TOKEN = stringPreferencesKey("auth_token")
         private val USER_TIER = stringPreferencesKey("user_tier")
         private val USER_NAME = stringPreferencesKey("user_name")
@@ -32,6 +33,7 @@ class UserPreferences @Inject constructor(
     }
 
     val isUnlocked: Flow<Boolean> = context.dataStore.data.map { it[IS_UNLOCKED] ?: false }
+    val hasLoggedInBefore: Flow<Boolean> = context.dataStore.data.map { it[HAS_LOGGED_IN_BEFORE] ?: false }
     val authToken: Flow<String?> = context.dataStore.data.map { it[AUTH_TOKEN] }
     val userTier: Flow<String?> = context.dataStore.data.map { it[USER_TIER] }
     val userName: Flow<String?> = context.dataStore.data.map { it[USER_NAME] }
@@ -54,6 +56,7 @@ class UserPreferences @Inject constructor(
             it[USER_NAME] = username
             it[USER_EMAIL] = email
             it[USER_TIER] = tier
+            it[HAS_LOGGED_IN_BEFORE] = true  // Mark device as having logged in successfully
         }
     }
 

@@ -10,9 +10,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FavoriteEntity::class,
         WatchHistoryEntity::class,
         SearchHistoryEntity::class,
-        DownloadEntity::class
+        DownloadEntity::class,
+        ReadChaptersEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -20,6 +21,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun watchHistoryDao(): WatchHistoryDao
     abstract fun searchHistoryDao(): SearchHistoryDao
     abstract fun downloadDao(): DownloadDao
+    abstract fun readChaptersDao(): ReadChaptersDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -73,6 +75,35 @@ abstract class AppDatabase : RoomDatabase() {
                         progress REAL NOT NULL DEFAULT 0,
                         created_at INTEGER NOT NULL DEFAULT 0
                     )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Create read_chapters table for Kotatsu-style tracking
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS read_chapters (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        manga_id TEXT NOT NULL,
+                        source_id TEXT NOT NULL,
+                        chapter_id TEXT NOT NULL,
+                        chapter_number REAL NOT NULL,
+                        read_at INTEGER NOT NULL DEFAULT 0,
+                        pages_read INTEGER NOT NULL DEFAULT 0,
+                        total_pages INTEGER NOT NULL DEFAULT 0,
+                        is_completed INTEGER NOT NULL DEFAULT 1
+                    )
+                    """.trimIndent()
+                )
+
+                // Create index for faster queries
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS index_read_chapters_manga
+                    ON read_chapters(manga_id, source_id)
                     """.trimIndent()
                 )
             }

@@ -1,9 +1,11 @@
 package com.omnistream.ui.navigation
 
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -34,9 +36,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.Canvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,8 +61,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.omnistream.ui.auth.AccessGateScreen
+import com.omnistream.ui.auth.AccountOptionsScreen
 import com.omnistream.ui.auth.LoginScreen
 import com.omnistream.ui.auth.RegisterScreen
+import com.omnistream.ui.auth.WelcomeScreen
 import com.omnistream.ui.browse.BrowseScreen
 import com.omnistream.ui.detail.MangaDetailScreen
 import com.omnistream.ui.detail.VideoDetailScreen
@@ -139,7 +148,7 @@ val bottomNavItems = listOf(
 )
 
 // Auth routes (no bottom nav)
-private val authRoutes = setOf("access_gate", "login", "register")
+private val authRoutes = setOf("welcome", "access_gate", "account_options", "login", "register")
 
 @Composable
 fun OmniNavigation(
@@ -184,17 +193,34 @@ fun OmniNavigation(
                 }
             ) {
                 // --- Auth screens ---
+                composable("welcome") {
+                    WelcomeScreen(
+                        onCreateAccount = {
+                            navController.navigate("access_gate")
+                        },
+                        onLogin = {
+                            navController.navigate("login")
+                        }
+                    )
+                }
+
                 composable("access_gate") {
                     AccessGateScreen(
                         onUnlocked = {
-                            navController.navigate("login") {
+                            navController.navigate("account_options") {
                                 popUpTo("access_gate") { inclusive = true }
                             }
+                        }
+                    )
+                }
+
+                composable("account_options") {
+                    AccountOptionsScreen(
+                        onCreateAccount = {
+                            navController.navigate("register")
                         },
-                        onSkipToLogin = {
-                            navController.navigate("login") {
-                                popUpTo("access_gate") { inclusive = true }
-                            }
+                        onSignIn = {
+                            navController.navigate("login")
                         }
                     )
                 }
@@ -205,9 +231,6 @@ fun OmniNavigation(
                             navController.navigate(Screen.Home.route) {
                                 popUpTo("login") { inclusive = true }
                             }
-                        },
-                        onNavigateToRegister = {
-                            navController.navigate("register")
                         }
                     )
                 }
@@ -387,72 +410,57 @@ fun OmniNavigation(
                         .height(80.dp)
                         .align(Alignment.BottomCenter),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(35.dp),
-                    color = Color.White.copy(alpha = 0.35f), // Increased from 0.15f for better visibility
+                    color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
                     shadowElevation = 12.dp,
                     tonalElevation = 8.dp
                 ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        // Find selected index
-                        val selectedIndex = bottomNavItems.indexOfFirst { screen ->
-                            currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                        }.coerceAtLeast(0)
+                    // Nav items
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        bottomNavItems.forEachIndexed { index, screen ->
+                            val selected = currentDestination?.hierarchy?.any {
+                                it.route == screen.route
+                            } == true
 
-                        // Calculate proper spacing for 5 items
-                        val screenWidth = Modifier.fillMaxWidth()
-                        val itemCount = bottomNavItems.size
+                            // Use consistent colors - bubble provides visual distinction
+                            val iconColor = if (selected) {
+                                Color.White
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            }
+                            val textColor = if (selected) {
+                                Color.White
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            }
 
-                        // Animated indicator position (fluid water-like motion)
-                        val indicatorOffset by animateFloatAsState(
-                            targetValue = selectedIndex.toFloat(),
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            ),
-                            label = "indicator"
-                        )
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                // Bubble background for selected item
+                                if (selected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                brush = Brush.radialGradient(
+                                                    colors = listOf(
+                                                        Color(0xFF6366F1),
+                                                        Color(0xFF4F46E5)
+                                                    )
+                                                )
+                                            )
+                                    )
+                                }
 
-                        // Animated pill indicator (water bubble)
-                        BoxWithConstraints(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .align(Alignment.Center)
-                        ) {
-                            // Calculate item positions to match Row's SpaceEvenly layout
-                            val rowHorizontalPadding = 12.dp // Row's horizontal padding
-                            val availableWidth = maxWidth - (rowHorizontalPadding * 2)
-                            val itemWidth = availableWidth / itemCount
-                            val bubbleWidth = 60.dp
-
-                            // Position: (item space * index) + center within item + padding
-                            // Reduced padding offset to fix "too much to right" issue
-                            val bubbleOffset = (itemWidth * indicatorOffset) +
-                                              ((itemWidth - bubbleWidth) / 2) +
-                                              (rowHorizontalPadding / 2) + 6.dp
-
-                            Surface(
-                                modifier = Modifier
-                                    .width(bubbleWidth)
-                                    .height(56.dp)
-                                    .offset(x = bubbleOffset),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(30.dp),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.95f)
-                            ) {}
-                        }
-
-                        // Nav items
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            bottomNavItems.forEachIndexed { index, screen ->
-                                val selected = currentDestination?.hierarchy?.any {
-                                    it.route == screen.route
-                                } == true
-
-                                Column(
+                                    Column(
                                     modifier = Modifier
                                         .clickable(
                                             interactionSource = remember { MutableInteractionSource() },
@@ -474,7 +482,7 @@ fun OmniNavigation(
                                     Icon(
                                         imageVector = if (selected) screen.selectedIcon else screen.unselectedIcon,
                                         contentDescription = screen.title,
-                                        tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                        tint = iconColor,
                                         modifier = Modifier.size(26.dp)
                                     )
 
@@ -483,7 +491,7 @@ fun OmniNavigation(
                                         text = screen.title.uppercase(),
                                         fontSize = 10.sp,
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                        color = textColor,
                                         maxLines = 1,
                                         letterSpacing = 0.5.sp
                                     )

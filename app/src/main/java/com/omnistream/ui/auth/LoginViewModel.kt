@@ -56,7 +56,19 @@ class LoginViewModel @Inject constructor(
             val result = authRepository.login(_email.value.trim(), _password.value)
             result.fold(
                 onSuccess = { _loginSuccess.value = true },
-                onFailure = { _error.value = it.message ?: "Login failed" }
+                onFailure = { exception ->
+                    val errorMsg = exception.message ?: "Login failed"
+                    // Add retry message for timeout/connection errors
+                    _error.value = if (errorMsg.contains("timeout", ignoreCase = true) ||
+                        errorMsg.contains("failed to connect", ignoreCase = true) ||
+                        errorMsg.contains("unable to resolve host", ignoreCase = true) ||
+                        errorMsg.contains("network", ignoreCase = true)
+                    ) {
+                        "$errorMsg - Please try again"
+                    } else {
+                        errorMsg
+                    }
+                }
             )
 
             _isLoading.value = false

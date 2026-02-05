@@ -291,6 +291,44 @@ class HomeViewModel @Inject constructor(
         return sections
     }
 
+    /**
+     * Check if a video source is anime-specific based on name/ID keywords
+     */
+    private fun isAnimeSource(source: VideoSource): Boolean {
+        val lowerName = source.name.lowercase()
+        val lowerId = source.id.lowercase()
+        val animeKeywords = listOf(
+            "anime",
+            "gogo",
+            "animekai",
+            "aniwatch",
+            "crunchyroll",
+            "9anime",
+            "anilist"
+        )
+        return animeKeywords.any { keyword ->
+            lowerName.contains(keyword) || lowerId.contains(keyword)
+        }
+    }
+
+    /**
+     * Check if a source ID is anime-specific (for filtering continue watching)
+     */
+    fun isAnimeSourceById(sourceId: String?): Boolean {
+        if (sourceId == null) return false
+        val lowerId = sourceId.lowercase()
+        val animeKeywords = listOf(
+            "anime",
+            "gogo",
+            "animekai",
+            "aniwatch",
+            "crunchyroll",
+            "9anime",
+            "anilist"
+        )
+        return animeKeywords.any { keyword -> lowerId.contains(keyword) }
+    }
+
     private suspend fun loadVideoContent(): List<VideoSection> {
         val sections = mutableListOf<VideoSection>()
         val errors = mutableListOf<String>()
@@ -318,13 +356,18 @@ class HomeViewModel @Inject constructor(
                 } ?: emptyList()
 
                 android.util.Log.d("HomeViewModel", "${source.name}: ${homeSections.size} sections loaded")
+
+                // Check if this is an anime source
+                val isAnimeSource = isAnimeSource(source)
+
                 homeSections.forEach { section ->
                     android.util.Log.d("HomeViewModel", "${source.name} - ${section.name}: ${section.items.size} items")
                     sections.add(VideoSection(
                         title = "${source.name} - ${section.name}",
                         items = section.items.take(10),
                         sourceId = source.id,
-                        sourceStatus = health?.status ?: SourceStatus.NORMAL
+                        sourceStatus = health?.status ?: SourceStatus.NORMAL,
+                        isAnime = isAnimeSource
                     ))
                 }
             } catch (e: Exception) {
@@ -392,5 +435,6 @@ data class VideoSection(
     val title: String,
     val items: List<Video>,
     val sourceId: String,
-    val sourceStatus: SourceStatus = SourceStatus.NORMAL
+    val sourceStatus: SourceStatus = SourceStatus.NORMAL,
+    val isAnime: Boolean = false  // True if source is anime-specific
 )

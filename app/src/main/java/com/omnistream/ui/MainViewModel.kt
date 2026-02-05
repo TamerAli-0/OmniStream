@@ -35,13 +35,16 @@ class MainViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            val isUnlocked = userPreferences.isUnlocked.first()
             val hasToken = userPreferences.authToken.first() != null
+            val hasLoggedInBefore = userPreferences.hasLoggedInBefore.first()
 
             _startDestination.value = when {
-                !isUnlocked -> StartDestination.AccessGate
-                !hasToken -> StartDestination.Login
-                else -> StartDestination.Home
+                // Currently logged in - go to home
+                hasToken -> StartDestination.Home
+                // Not logged in, but has logged in before - skip passcode, go to login
+                hasLoggedInBefore -> StartDestination.Login
+                // Brand new install, never logged in - require passcode
+                else -> StartDestination.AccessGate
             }
         }
     }

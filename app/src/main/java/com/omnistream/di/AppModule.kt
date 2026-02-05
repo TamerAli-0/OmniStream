@@ -6,6 +6,7 @@ import com.omnistream.core.network.OmniHttpClient
 import com.omnistream.data.local.AppDatabase
 import com.omnistream.data.local.DownloadDao
 import com.omnistream.data.local.FavoriteDao
+import com.omnistream.data.local.ReadChaptersDao
 import com.omnistream.data.local.SearchHistoryDao
 import com.omnistream.data.local.UserPreferences
 import com.omnistream.data.local.WatchHistoryDao
@@ -15,6 +16,7 @@ import com.omnistream.data.remote.GitHubApiService
 import com.omnistream.data.repository.AuthRepository
 import com.omnistream.data.repository.SyncRepository
 import com.omnistream.data.repository.DownloadRepository
+import com.omnistream.data.repository.ReadChaptersRepository
 import com.omnistream.data.repository.UpdateRepository
 import com.omnistream.data.repository.WatchHistoryRepository
 import com.omnistream.source.SourceManager
@@ -91,7 +93,10 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "omnistream.db"
-        ).addMigrations(AppDatabase.MIGRATION_1_2).build()
+        ).addMigrations(
+            AppDatabase.MIGRATION_1_2,
+            AppDatabase.MIGRATION_2_3
+        ).build()
     }
 
     @Provides
@@ -115,9 +120,24 @@ object AppModule {
     }
 
     @Provides
+    fun provideReadChaptersDao(database: AppDatabase): ReadChaptersDao {
+        return database.readChaptersDao()
+    }
+
+    @Provides
     @Singleton
     fun provideWatchHistoryRepository(watchHistoryDao: WatchHistoryDao): WatchHistoryRepository {
         return WatchHistoryRepository(watchHistoryDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideReadChaptersRepository(
+        readChaptersDao: ReadChaptersDao,
+        aniListAuthManager: com.omnistream.data.anilist.AniListAuthManager,
+        aniListSyncManager: com.omnistream.data.anilist.AniListSyncManager
+    ): ReadChaptersRepository {
+        return ReadChaptersRepository(readChaptersDao, aniListAuthManager, aniListSyncManager)
     }
 
     @Provides

@@ -22,7 +22,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun AccessGateScreen(
     onUnlocked: () -> Unit,
-    onSkipToLogin: () -> Unit = {},
     viewModel: AccessGateViewModel = hiltViewModel()
 ) {
     val password by viewModel.password.collectAsState()
@@ -65,7 +64,7 @@ fun AccessGateScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Enter your access password to continue",
+                text = "Enter your passcode to unlock",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
@@ -76,7 +75,7 @@ fun AccessGateScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = viewModel::onPasswordChanged,
-                label = { Text("Access Password") },
+                label = { Text("Passcode") },
                 singleLine = true,
                 isError = error != null,
                 supportingText = error?.let { { Text(it) } },
@@ -110,18 +109,6 @@ fun AccessGateScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(
-                onClick = onSkipToLogin,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    "Already have an account? Sign in",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
         }
     }
 }

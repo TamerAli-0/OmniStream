@@ -25,7 +25,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val email by viewModel.email.collectAsState()
@@ -136,11 +135,7 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            TextButton(onClick = onNavigateToRegister) {
-                Text("Don't have an account? Register")
-            }
+            // NEVER show register option - only way to register is through passcode flow
         }
     }
 }

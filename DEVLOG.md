@@ -1,7 +1,222 @@
 # OmniStream Development Log
 
-**Last Updated:** February 4, 2026
-**Session:** Saikou UI - No Hardcoded Data + Glossy Detail Screens
+**Last Updated:** February 5, 2026 (Late Evening)
+**Session:** Light Mode Fix + UI Polish
+
+---
+
+## Feb 5, 2026 (Late Evening) - Light Mode & UI Polish
+
+### 🎨 Light Mode Fixes
+
+**Problem:** Light mode had poor text contrast and hardcoded dark colors
+
+**Fixed:**
+1. **SettingsScreen** - All hardcoded colors replaced with theme-aware colors:
+   - `Color(0xFF0a0a0a)` → `MaterialTheme.colorScheme.background`
+   - `Color.White` → `MaterialTheme.colorScheme.onBackground`
+   - `Color.Gray` → `MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)`
+
+2. **Bottom Navigation** - Adaptive surface color:
+   - `Color.White.copy(alpha = 0.35f)` → `MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f)`
+   - Now works properly in both light and dark themes
+
+3. **HomeScreen** - Text colors adapted:
+   - All `color = Color.White,` → `color = MaterialTheme.colorScheme.onBackground,`
+
+**Files Modified:**
+- `SettingsScreen.kt` - Theme-aware colors throughout
+- `OmniNavigation.kt` - Bottom nav surface color
+- `HomeScreen.kt` - Card text colors
+
+### 🔧 UI Improvements
+
+**1. Settings AniList Avatar**
+- Replaced "S" placeholder with actual AniList profile picture
+- Shows user avatar when connected, "S" when not connected
+- 56dp circular image matching homepage style
+
+**2. Bottom Nav Bubble**
+- Reverted to rigid but correctly positioned version
+- Each item has perfectly centered bubble
+- Smooth show/hide (animation work postponed)
+
+### ⚠ Known Issues
+- **Light mode card text** - Anime/Movies/Manga cards may still need contrast adjustment
+- **Bottom nav icons** - May show dark colors in light mode (needs verification)
+- **Bubble animation** - Rigid version works, smooth animation needs research
+- **Movies tab** - May show MangaDex content instead of FlickyStream (needs investigation)
+
+### 📋 Next Session
+- [ ] Fix remaining light mode contrast issues
+- [ ] Investigate Movies tab MangaDex issue
+- [ ] Research smooth bubble animation (like water flow)
+- [ ] Push to GitHub repo
+
+---
+
+## Feb 5, 2026 (Evening) - Critical Auth Bugs Fixed ✅
+
+### 🔥 Critical Fixes
+
+#### 1. Session Persistence Bug Fixed
+**Problem:** Users stayed logged in after logout and app restart
+**Root Cause:** `SettingsScreen.kt` logout button only navigated to login screen without clearing auth token from DataStore
+
+**Solution:**
+```kotlin
+// OLD (line 414):
+onClick = onLogout  // Only navigates, doesn't clear auth
+
+// NEW:
+onClick = { viewModel.logout(onLoggedOut = onLogout) }  // Clears auth THEN navigates
+```
+
+**Files Modified:**
+- `SettingsScreen.kt` - Now calls `viewModel.logout()` which calls `authRepository.logout()`
+- `AuthRepository.kt` - Already had `logout()` calling `prefs.clearAuth()` (removes AUTH_TOKEN, USER_NAME, USER_EMAIL)
+- `OmniNavigation.kt` - Updated logout navigation to go to Welcome instead of Login
+
+**Impact:** Users now properly logged out when clicking logout button
+
+#### 2. Complete Auth Flow - Passcode Protection + No Bypass
+**User Requirements:**
+- Passcode REQUIRED to create new accounts (DCMA protection)
+- Returning users (who have logged in before) skip passcode entirely
+- LoginScreen NEVER shows "Create account" option (prevents bypass)
+- RegisterScreen shows "Already have an account? Sign in" (safe because already passed passcode)
+
+**Final Flow:**
+```
+BRAND NEW INSTALL (never logged in before):
+1. AccessGate (passcode required)
+2. AccountOptionsScreen
+   ├─ "Create Account" → RegisterScreen → Success → Home
+   └─ "Sign in" → LoginScreen (NO register option - if they lied, they just can't login)
+
+RETURNING USERS (have logged in successfully before):
+1. LoginScreen directly (NO passcode, NO register option)
+2. Login → Home
+```
+
+**How it works:**
+- `hasLoggedInBefore` flag in DataStore set to `true` after first successful login/register
+- MainViewModel checks this flag at startup:
+  - `hasLoggedInBefore = false` → Start at AccessGate (new install)
+  - `hasLoggedInBefore = true` AND `hasToken = true` → Start at Home (still logged in)
+  - `hasLoggedInBefore = true` AND `hasToken = false` → Start at Login (logged out, skip passcode)
+
+**Files Created:**
+- `AccountOptionsScreen.kt` - Screen shown after passcode with "Create Account" and "Sign in" options
+
+**Files Modified:**
+- `UserPreferences.kt`:
+  - Added `hasLoggedInBefore` flag
+  - Set to true in `setAuthData()` after successful login/register
+- `MainViewModel.kt`:
+  - Check `hasLoggedInBefore` to determine start destination
+  - Removed Welcome destination (not needed)
+- `LoginScreen.kt`:
+  - **REMOVED all "Don't have an account? Register" options**
+  - Only way to register is through passcode flow
+- `OmniNavigation.kt`:
+  - Added `account_options` route
+  - AccessGate navigates to AccountOptionsScreen
+  - Logout navigates to Login (not Welcome)
+- `MainActivity.kt` - Removed Welcome destination
+
+**Security - No Bypass Holes:**
+- Cannot create account without passcode ✅
+- Cannot access RegisterScreen from LoginScreen ✅
+- Returning users skip passcode but cannot register ✅
+- Only path to register: Passcode → AccountOptions → Create Account ✅
+
+---
+
+## Feb 5, 2026 - Kotatsu-Style Reading Tracking + Auth Security Fix
+
+### 🎯 Major Changes
+
+#### 1. Kotatsu-Style Individual Chapter Tracking (Database v3)
+**New Table:** `read_chapters` - Tracks each chapter individually (not just "read up to")
+
+**Schema:**
+- `id` (String): "sourceId:mangaId:chapterId"
+- `chapter_number` (Float): Actual chapter number (1.0, 2.5, etc.)
+- `read_at` (Long): Timestamp when marked as read
+- `pages_read` (Int): Number of pages read
+- `is_completed` (Boolean): Whether fully read
+
+**Files Created:**
+- `ReadChaptersEntity.kt` - Room entity
+- `ReadChaptersDao.kt` - Database access with Flow support
+- `ReadChaptersRepository.kt` - Business logic + AniList sync ready
+- Migration 2→3 in `AppDatabase.kt`
+
+**Integration:**
+- `ReaderViewModel.kt` - Auto-marks chapter as read when reaching last page
+- Syncs with AniList when user is logged in (framework ready)
+
+#### 2. Fixed URL Encoding Issues
+**Problem:** Titles showed "Relationship+Goals" instead of "Relationship Goals"
+
+**Solution:** Added URL decoding in `FlickyStreamSource.kt`:
+```kotlin
+val title = java.net.URLDecoder.decode(rawTitle.replace("+", " "), "UTF-8")
+```
+
+#### 3. Continue Watching Source Filtering
+**Problem:** WatchFlix movies showing in Anime tab
+
+**Solution:**
+- Added `isAnimeSourceById()` in `HomeViewModel.kt`
+- Filter continue watching by source type:
+  - Anime tab: Only anime sources (AnimeKai, GogoAnime, etc.)
+  - Movies tab: Only movie sources (FlickyStream, WatchFlix, etc.)
+
+#### 4. Auth Flow Security Fix - 3-Screen Flow ✅ (UPDATED IN EVENING SESSION)
+**Problem:** "Sign in" button bypassed passcode completely + session persistence bug
+**Solution:** See evening session above for complete implementation
+
+**Old incomplete flow:**
+- Welcome → AccessGate → Register (missing AccountOptions screen)
+- Logout didn't clear auth token
+
+**New complete flow (evening):**
+- Welcome → AccessGate → **AccountOptionsScreen** → Register/Login
+- Welcome → Login (direct, no passcode)
+- Logout now properly clears auth token
+
+#### 5. Bubble Indicator - Canvas Implementation ✅
+**Attempts:** Multiple BoxWithConstraints approaches failed
+**Final Solution:** Canvas-based with predefined positions (0.1, 0.3, 0.5, 0.7, 0.9)
+**Animation:** Spring animation for smooth movement
+**Status:** Implemented, needs device testing
+
+### Files Modified
+- `AppDatabase.kt` - Added ReadChaptersEntity, migration 2→3
+- `AppModule.kt` - Added ReadChaptersRepository provider
+- `ReaderViewModel.kt` - Integrated read tracking
+- `HomeViewModel.kt` - Added source type filtering
+- `HomeScreen.kt` - Filter continue watching by source
+- `FlickyStreamSource.kt` - URL decoding fix
+- `MainViewModel.kt` - Auth flow changes (needs Welcome screen)
+- `OmniNavigation.kt` - Bubble improvements (needs more work)
+
+### Known Issues
+1. **Bubble indicator positioning** - Still not perfect, needs research
+2. ~~**Auth flow** - Welcome screen not yet created~~ ✅ FIXED IN EVENING SESSION
+3. ~~**Session persistence bug**~~ ✅ FIXED IN EVENING SESSION
+4. **Database migration** - Required clearing app data (fresh install)
+
+### Next Session
+- [x] Create WelcomeScreen.kt (3-screen auth flow) ✅
+- [x] Fix session persistence bug ✅
+- [x] Create AccountOptionsScreen for post-passcode options ✅
+- [ ] Research and implement proper bubble indicator from GitHub
+- [ ] Integrate read chapters display in MangaDetailScreen (grey out read chapters)
+- [ ] Add bulk mark as read/unread functionality
+- [ ] Test AniList sync for manga progress
 
 ---
 

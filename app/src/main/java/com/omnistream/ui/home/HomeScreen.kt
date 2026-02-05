@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -50,164 +51,193 @@ fun HomeScreen(
 
     // Use custom background images from drawable resources
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // AniList Banner (if available)
-        if (bannerUrl != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-            ) {
-                AsyncImage(
-                    model = bannerUrl,
-                    contentDescription = "Profile Banner",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-                // Gradient overlay for readability
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
-                                    MaterialTheme.colorScheme.background
-                                )
-                            )
-                        )
-                )
-            }
-        }
-
-        // Top bar - NO elevation/shadow
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
-                .windowInsetsPadding(if (bannerUrl == null) WindowInsets.statusBars else WindowInsets(0.dp))
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // AniList Avatar
-                val avatarUrl = stats?.user?.avatar
-                if (avatarUrl != null) {
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier.size(48.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        AsyncImage(
-                            model = avatarUrl,
-                            contentDescription = "Profile Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                } else {
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier.size(48.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Icon(
-                            Icons.Default.AccountCircle,
-                            contentDescription = "Profile",
-                            modifier = Modifier.fillMaxSize().padding(8.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Column {
-                    Text(
-                        username,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Episodes: $totalEpisodesWatched • Chapters: $totalChaptersRead",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-
-            IconButton(onClick = { navController.navigate("settings") }) {
-                Icon(
-                    Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-
-        // GLOSSY TABS - STICK AT TOP
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-                // ANIME LIST - Custom background
-                GlossyTabCardWithImage(
-                    modifier = Modifier.weight(1f),
-                    title = "ANIME",
-                    backgroundRes = R.drawable.bg_anime,
-                    isSelected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
-                    accentColor = Color(0xFFFF6B6B) // Red accent
-                )
-
-                // MANGA LIST - Custom background
-                GlossyTabCardWithImage(
-                    modifier = Modifier.weight(1f),
-                    title = "MANGA",
-                    backgroundRes = R.drawable.bg_manga,
-                    isSelected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
-                    accentColor = Color(0xFF4ECDC4) // Cyan accent
-                )
-
-                // MOVIES/TV - Custom background
-                GlossyTabCardWithImage(
-                    modifier = Modifier.weight(1f),
-                    title = "MOVIES",
-                    backgroundRes = R.drawable.bg_movies,
-                    isSelected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
-                    accentColor = Color(0xFFFFD93D) // Yellow accent
-                )
-        }
-
-        // Content - scrollable
+        // Content - everything scrollable including banner and top bar
         LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 20.dp)
+                contentPadding = PaddingValues(bottom = 20.dp)
             ) {
+                // AniList Banner or Placeholder - inside LazyColumn so it scrolls
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                    ) {
+                        if (bannerUrl != null) {
+                            // User's AniList banner
+                            AsyncImage(
+                                model = bannerUrl,
+                                contentDescription = "Profile Banner",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            // Cute anime/manga/movies placeholder when not connected
+                            AsyncImage(
+                                model = "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1200&h=400&fit=crop",
+                                contentDescription = "Placeholder Banner",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        // Lighter gradient overlay - show more of the banner
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color.Transparent,
+                                            MaterialTheme.colorScheme.background.copy(alpha = 0.3f),
+                                            MaterialTheme.colorScheme.background
+                                        )
+                                    )
+                                )
+                        )
+                    }
+                }
+
+                // Top bar - inside LazyColumn so it scrolls
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.background)
+                            .windowInsetsPadding(if (bannerUrl == null) WindowInsets.statusBars else WindowInsets(0.dp))
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // AniList Avatar
+                            val avatarUrl = stats?.user?.avatar
+                            if (avatarUrl != null) {
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    modifier = Modifier.size(48.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    AsyncImage(
+                                        model = avatarUrl,
+                                        contentDescription = "Profile Avatar",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            } else {
+                                Surface(
+                                    shape = RoundedCornerShape(50),
+                                    modifier = Modifier.size(48.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    Icon(
+                                        Icons.Default.AccountCircle,
+                                        contentDescription = "Profile",
+                                        modifier = Modifier.fillMaxSize().padding(8.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Column {
+                                Text(
+                                    username,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "Episodes: $totalEpisodesWatched • Chapters: $totalChaptersRead",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = { navController.navigate("search") }) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = "Search",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            IconButton(onClick = { navController.navigate("settings") }) {
+                                Icon(
+                                    Icons.Default.Settings,
+                                    contentDescription = "Settings",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // GLOSSY TABS - Inside LazyColumn so they scroll
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                            // ANIME LIST - Custom background (LEFT)
+                            GlossyTabCardWithImage(
+                                modifier = Modifier.weight(1f),
+                                title = "ANIME",
+                                backgroundRes = R.drawable.bg_anime,
+                                isSelected = selectedTab == 0,
+                                onClick = { selectedTab = 0 },
+                                accentColor = Color(0xFFFF6B6B) // Red accent
+                            )
+
+                            // MOVIES/TV - Custom background (MIDDLE)
+                            GlossyTabCardWithImage(
+                                modifier = Modifier.weight(1f),
+                                title = "MOVIES",
+                                backgroundRes = R.drawable.bg_movies,
+                                isSelected = selectedTab == 1,
+                                onClick = { selectedTab = 1 },
+                                accentColor = Color(0xFFFFD93D) // Yellow accent
+                            )
+
+                            // MANGA LIST - Custom background (RIGHT)
+                            GlossyTabCardWithImage(
+                                modifier = Modifier.weight(1f),
+                                title = "MANGA",
+                                backgroundRes = R.drawable.bg_manga,
+                                isSelected = selectedTab == 2,
+                                onClick = { selectedTab = 2 },
+                                accentColor = Color(0xFF4ECDC4) // Cyan accent
+                            )
+                    }
+                }
+
                 when (selectedTab) {
                     0 -> {
-                        // ANIME LIST
-                        // Continue Watching
-                        if (uiState.continueWatching.isNotEmpty()) {
+                        // ANIME LIST (LEFT)
+                        // Continue Watching - Only anime sources
+                        val animeContinue = uiState.continueWatching.filter { viewModel.isAnimeSourceById(it.sourceId) }
+                        if (animeContinue.isNotEmpty()) {
                             item {
                                 SectionTitle("Continue Watching")
                                 Spacer(Modifier.height(12.dp))
                             }
                             item {
                                 CardRow(
-                                    items = uiState.continueWatching.map { it.toMediaItem() },
+                                    items = animeContinue.map { it.toMediaItem() },
                                     onClick = { navController.navigate("video/${it.sourceId}/${it.id}") }
                                 )
                                 Spacer(Modifier.height(24.dp))
@@ -230,7 +260,7 @@ fun HomeScreen(
                         }
 
                         // Discovery sections - Anime only (filter out movies)
-                        uiState.videoSections.take(3).forEach { section ->
+                        uiState.videoSections.filter { it.isAnime }.take(3).forEach { section ->
                             item {
                                 SectionTitle(section.title)
                                 Spacer(Modifier.height(12.dp))
@@ -247,7 +277,42 @@ fun HomeScreen(
                         }
                     }
                     1 -> {
-                        // MANGA LIST
+                        // MOVIES/TV SHOWS LIST (MIDDLE)
+                        // Continue Watching - Only non-anime sources (movies/TV)
+                        val moviesContinue = uiState.continueWatching.filter { !viewModel.isAnimeSourceById(it.sourceId) }
+                        if (moviesContinue.isNotEmpty()) {
+                            item {
+                                SectionTitle("Continue Watching")
+                                Spacer(Modifier.height(12.dp))
+                            }
+                            item {
+                                CardRow(
+                                    items = moviesContinue.map { it.toMediaItem() },
+                                    onClick = { navController.navigate("video/${it.sourceId}/${it.id}") }
+                                )
+                                Spacer(Modifier.height(24.dp))
+                            }
+                        }
+
+                        // Discovery sections - Movies/TV
+                        uiState.videoSections.filter { !it.isAnime }.take(5).forEach { section ->
+                            item {
+                                SectionTitle(section.title)
+                                Spacer(Modifier.height(12.dp))
+                            }
+                            item {
+                                VideoCardRow(
+                                    items = section.items.take(10),
+                                    onClick = { video ->
+                                        navController.navigate("video/${section.sourceId}/${video.id}")
+                                    }
+                                )
+                                Spacer(Modifier.height(24.dp))
+                            }
+                        }
+                    }
+                    2 -> {
+                        // MANGA LIST (RIGHT)
                         // Continue Reading
                         if (uiState.continueReading.isNotEmpty()) {
                             item {
@@ -289,25 +354,6 @@ fun HomeScreen(
                                     items = section.items.take(10),
                                     onClick = { manga ->
                                         navController.navigate("manga/${section.sourceId}/${manga.id}")
-                                    }
-                                )
-                                Spacer(Modifier.height(24.dp))
-                            }
-                        }
-                    }
-                    2 -> {
-                        // MOVIES/TV SHOWS LIST
-                        // Discovery sections - Movies/TV
-                        uiState.videoSections.take(5).forEach { section ->
-                            item {
-                                SectionTitle(section.title)
-                                Spacer(Modifier.height(12.dp))
-                            }
-                            item {
-                                VideoCardRow(
-                                    items = section.items.take(10),
-                                    onClick = { video ->
-                                        navController.navigate("video/${section.sourceId}/${video.id}")
                                     }
                                 )
                                 Spacer(Modifier.height(24.dp))
@@ -398,7 +444,7 @@ private fun GlossyTabCardWithImage(
             // Text
             Text(
                 title,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontSize = 14.sp,
                 fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
                 modifier = Modifier.align(Alignment.Center)
@@ -521,7 +567,7 @@ private fun VideoGlossyCard(
 
         Text(
             text = video.title,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 2,
@@ -596,7 +642,7 @@ private fun MangaGlossyCard(
 
         Text(
             text = manga.title,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 2,
@@ -610,7 +656,7 @@ private fun MangaGlossyCard(
 private fun SectionTitle(text: String) {
     Text(
         text = text,
-        color = Color.White,
+        color = MaterialTheme.colorScheme.onBackground,
         fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(horizontal = 20.dp)
@@ -715,7 +761,7 @@ private fun GlossyCard(
         // Title
         Text(
             text = item.title,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 2,

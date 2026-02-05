@@ -28,6 +28,7 @@ import javax.inject.Inject
 class ReaderViewModel @Inject constructor(
     private val sourceManager: SourceManager,
     private val watchHistoryRepository: WatchHistoryRepository,
+    private val readChaptersRepository: com.omnistream.data.repository.ReadChaptersRepository,
     private val downloadDao: DownloadDao,
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
@@ -264,6 +265,29 @@ class ReaderViewModel @Inject constructor(
     private suspend fun saveCurrentProgress() {
         val state = _uiState.value
         if (state.pages.isEmpty()) return
+
+        // Get actual chapter number (not index)
+        val currentChapterNumber = if (currentChapterIndex >= 0 && currentChapterIndex < chapterList.size) {
+            chapterList[currentChapterIndex].number
+        } else {
+            state.chapterNumber
+        }
+
+        // Check if user reached the last page (mark as read)
+        val isLastPage = state.currentPage >= state.pages.size - 1
+        if (isLastPage) {
+            // Mark chapter as read in Kotatsu-style tracking
+            readChaptersRepository.markChapterAsRead(
+                mangaId = mangaId,
+                sourceId = sourceId,
+                chapterId = currentChapterId,
+                chapterNumber = currentChapterNumber,
+                pagesRead = state.pages.size,
+                totalPages = state.pages.size,
+                syncToAniList = true
+            )
+        }
+
         watchHistoryRepository.upsert(
             WatchHistoryEntity(
                 id = "$sourceId:$mangaId",
@@ -273,7 +297,7 @@ class ReaderViewModel @Inject constructor(
                 title = mangaTitle,
                 coverUrl = coverUrl,
                 chapterId = currentChapterId,
-                chapterIndex = currentChapterIndex.coerceAtLeast(0),
+                chapterIndex = currentChapterNumber.toInt(), // Save chapter NUMBER, not index
                 totalChapters = chapterList.size,
                 progressPosition = state.currentPage.toLong(),
                 totalDuration = state.pages.size.toLong(),

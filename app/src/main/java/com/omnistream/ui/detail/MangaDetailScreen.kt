@@ -282,7 +282,7 @@ fun MangaDetailScreen(
 
                         // Chapter list
                         items(uiState.chapters, key = { it.id }) { chapter ->
-                            val isRead = uiState.readUpToChapterNumber >= 0f && chapter.number < uiState.readUpToChapterNumber
+                            val isRead = uiState.readUpToChapterNumber >= 0f && chapter.number <= uiState.readUpToChapterNumber
                             val downloadStatus = uiState.downloadedChapters[chapter.id]
 
                             ChapterItem(

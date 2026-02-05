@@ -74,7 +74,19 @@ class RegisterViewModel @Inject constructor(
             val result = authRepository.register(e, u, p)
             result.fold(
                 onSuccess = { _registerSuccess.value = true },
-                onFailure = { _error.value = it.message ?: "Registration failed" }
+                onFailure = { exception ->
+                    val errorMsg = exception.message ?: "Registration failed"
+                    // Add retry message for timeout/connection errors
+                    _error.value = if (errorMsg.contains("timeout", ignoreCase = true) ||
+                        errorMsg.contains("failed to connect", ignoreCase = true) ||
+                        errorMsg.contains("unable to resolve host", ignoreCase = true) ||
+                        errorMsg.contains("network", ignoreCase = true)
+                    ) {
+                        "$errorMsg - Please try again"
+                    } else {
+                        errorMsg
+                    }
+                }
             )
 
             _isLoading.value = false
