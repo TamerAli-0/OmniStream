@@ -30,6 +30,7 @@ class UserPreferences @Inject constructor(
         private val DARK_MODE = stringPreferencesKey("dark_mode") // "dark", "light", "system"
         private val SEARCH_CONTENT_TYPE_FILTER = stringPreferencesKey("search_content_type")
         private val PREFERRED_TRACKING_SERVICE = stringPreferencesKey("preferred_tracking_service") // "anilist" or "mal"
+        private val DISMISSED_UPDATE_VERSION = stringPreferencesKey("dismissed_update_version")
     }
 
     val isUnlocked: Flow<Boolean> = context.dataStore.data.map { it[IS_UNLOCKED] ?: false }
@@ -42,6 +43,7 @@ class UserPreferences @Inject constructor(
     val darkMode: Flow<String> = context.dataStore.data.map { it[DARK_MODE] ?: "dark" }
     val searchContentTypeFilter: Flow<String> = context.dataStore.data.map { it[SEARCH_CONTENT_TYPE_FILTER] ?: "ALL" }
     val preferredTrackingService: Flow<String> = context.dataStore.data.map { it[PREFERRED_TRACKING_SERVICE] ?: "anilist" }
+    val dismissedUpdateVersion: Flow<String?> = context.dataStore.data.map { it[DISMISSED_UPDATE_VERSION] }
 
     suspend fun setUnlocked(unlocked: Boolean, tier: String) {
         context.dataStore.edit {
@@ -82,6 +84,10 @@ class UserPreferences @Inject constructor(
 
     suspend fun setPreferredTrackingService(service: String) {
         context.dataStore.edit { it[PREFERRED_TRACKING_SERVICE] = service }
+    }
+
+    suspend fun setDismissedUpdateVersion(version: String) {
+        context.dataStore.edit { it[DISMISSED_UPDATE_VERSION] = version }
     }
 
     suspend fun clearAll() {

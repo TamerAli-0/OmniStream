@@ -217,7 +217,7 @@ fun HomeScreen(
                             GlossyTabCardWithImage(
                                 modifier = Modifier.weight(1f),
                                 title = "MANGA",
-                                backgroundRes = R.drawable.bg_manga,
+                                backgroundRes = R.drawable.bg_anime,
                                 isSelected = selectedTab == 2,
                                 onClick = { selectedTab = 2 },
                                 accentColor = Color(0xFF4ECDC4) // Cyan accent

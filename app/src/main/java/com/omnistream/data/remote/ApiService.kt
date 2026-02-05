@@ -83,6 +83,18 @@ class ApiService @Inject constructor() {
         handleResponse(response)
     }
 
+    // --- App version endpoints ---
+
+    suspend fun checkAppVersion(currentVersion: String, platform: String = "android"): Result<AppVersionResponse> = apiCall {
+        val url = "$BASE_URL/app/version?platform=$platform&currentVersion=$currentVersion"
+        val req = Request.Builder()
+            .url(url)
+            .get()
+            .build()
+        val response = client.newCall(req).execute()
+        handleResponse(response)
+    }
+
     // --- Helpers ---
 
     private suspend fun <T> apiCall(block: suspend () -> T): Result<T> {
