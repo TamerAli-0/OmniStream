@@ -11,6 +11,12 @@
 -keep class com.omnistream.data.remote.dto.** { *; }
 -keep class com.omnistream.data.**.dto.** { *; }
 
+# AniList API models
+-keep class com.omnistream.data.anilist.AniListUser { *; }
+-keep class com.omnistream.data.anilist.AniListMedia { *; }
+-keep class com.omnistream.data.anilist.AniListStatistics { *; }
+-keep class com.omnistream.data.anilist.AniListStatus { *; }
+
 # OkHttp
 -dontwarn okhttp3.**
 -dontwarn okio.**

@@ -57,21 +57,32 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // Fetch user info from AniList (includes banner)
+                // Fetch user info and statistics from AniList
                 val anilistUser = anilistApi.getCurrentUser()
+                val anilistStatistics = anilistApi.getUserStatistics()
 
-                // Calculate from watch history
-                kotlinx.coroutines.flow.combine(
-                    watchHistoryRepository.getContinueWatching(),
-                    watchHistoryRepository.getContinueReading()
-                ) { watching, reading ->
-                    AniListStats(
-                        episodesWatched = watching.size,
-                        chaptersRead = reading.size,
+                // Use actual AniList statistics if available, fallback to local counts
+                if (anilistStatistics != null && anilistUser != null) {
+                    val stats = AniListStats(
+                        episodesWatched = anilistStatistics.episodesWatched,
+                        chaptersRead = anilistStatistics.chaptersRead,
                         user = anilistUser
                     )
-                }.collect { stats ->
                     _uiState.value = _uiState.value.copy(anilistStats = stats)
+                } else {
+                    // Fallback: Calculate from local watch history
+                    kotlinx.coroutines.flow.combine(
+                        watchHistoryRepository.getContinueWatching(),
+                        watchHistoryRepository.getContinueReading()
+                    ) { watching, reading ->
+                        AniListStats(
+                            episodesWatched = watching.size,
+                            chaptersRead = reading.size,
+                            user = anilistUser
+                        )
+                    }.collect { stats ->
+                        _uiState.value = _uiState.value.copy(anilistStats = stats)
+                    }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("HomeViewModel", "Failed to load AniList stats", e)

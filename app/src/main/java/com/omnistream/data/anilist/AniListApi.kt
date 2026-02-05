@@ -252,6 +252,62 @@ class AniListApi @Inject constructor(
             emptyList()
         }
     }
+
+    /**
+     * Get user's manga statistics including total chapters read
+     */
+    suspend fun getUserStatistics(): AniListStatistics? = withContext(Dispatchers.IO) {
+        val token = authManager.getAccessToken() ?: return@withContext null
+
+        val query = """
+            query {
+                Viewer {
+                    statistics {
+                        manga {
+                            chaptersRead
+                            count
+                            meanScore
+                            minutesRead
+                        }
+                        anime {
+                            episodesWatched
+                            count
+                            meanScore
+                            minutesWatched
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        try {
+            val response = httpClient.postJson(
+                url = GRAPHQL_URL,
+                json = """{"query":"${query.replace("\n", "\\n")}"}""",
+                headers = mapOf(
+                    "Authorization" to "Bearer $token"
+                )
+            )
+
+            val jsonResponse = json.parseToJsonElement(response).jsonObject
+            val data = jsonResponse["data"]?.jsonObject ?: return@withContext null
+            val viewer = data["Viewer"]?.jsonObject ?: return@withContext null
+            val stats = viewer["statistics"]?.jsonObject ?: return@withContext null
+
+            val mangaStats = stats["manga"]?.jsonObject
+            val animeStats = stats["anime"]?.jsonObject
+
+            AniListStatistics(
+                chaptersRead = mangaStats?.get("chaptersRead")?.toString()?.toIntOrNull() ?: 0,
+                mangaCount = mangaStats?.get("count")?.toString()?.toIntOrNull() ?: 0,
+                episodesWatched = animeStats?.get("episodesWatched")?.toString()?.toIntOrNull() ?: 0,
+                animeCount = animeStats?.get("count")?.toString()?.toIntOrNull() ?: 0
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("AniListApi", "Failed to get user statistics", e)
+            null
+        }
+    }
 }
 
 @Serializable
@@ -270,6 +326,14 @@ data class AniListMedia(
     val title: String,
     val coverImage: String?,
     val format: String?
+)
+
+@Serializable
+data class AniListStatistics(
+    val chaptersRead: Int,
+    val mangaCount: Int,
+    val episodesWatched: Int,
+    val animeCount: Int
 )
 
 enum class AniListStatus {
