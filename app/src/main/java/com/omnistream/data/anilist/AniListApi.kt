@@ -272,14 +272,10 @@ class AniListApi @Inject constructor(
                         manga {
                             chaptersRead
                             count
-                            meanScore
-                            minutesRead
                         }
                         anime {
                             episodesWatched
                             count
-                            meanScore
-                            minutesWatched
                         }
                     }
                 }

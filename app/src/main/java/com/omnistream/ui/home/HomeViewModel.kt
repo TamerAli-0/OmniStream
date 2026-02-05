@@ -88,7 +88,7 @@ class HomeViewModel @Inject constructor(
                 val anilistStatistics = anilistApi.getUserStatistics()
                 android.util.Log.d("HomeViewModel", "AniList stats - Chapters: ${anilistStatistics?.chaptersRead}, Episodes: ${anilistStatistics?.episodesWatched}")
 
-                // Use actual AniList statistics if available, fallback to local counts
+                // Use actual AniList statistics if available
                 if (anilistStatistics != null && anilistUser != null) {
                     android.util.Log.d("HomeViewModel", "Using AniList statistics")
                     val stats = AniListStats(
@@ -99,21 +99,7 @@ class HomeViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(anilistStats = stats)
                     android.util.Log.d("HomeViewModel", "Stats updated - Chapters: ${stats.chaptersRead}, Episodes: ${stats.episodesWatched}")
                 } else {
-                    android.util.Log.d("HomeViewModel", "Falling back to local watch history")
-                    // Fallback: Calculate from local watch history
-                    kotlinx.coroutines.flow.combine(
-                        watchHistoryRepository.getContinueWatching(),
-                        watchHistoryRepository.getContinueReading()
-                    ) { watching, reading ->
-                        AniListStats(
-                            episodesWatched = watching.size,
-                            chaptersRead = reading.size,
-                            user = anilistUser
-                        )
-                    }.collect { stats ->
-                        _uiState.value = _uiState.value.copy(anilistStats = stats)
-                        android.util.Log.d("HomeViewModel", "Local stats - Chapters: ${stats.chaptersRead}, Episodes: ${stats.episodesWatched}")
-                    }
+                    android.util.Log.d("HomeViewModel", "API returned null, could not load stats")
                 }
             } catch (e: Exception) {
                 android.util.Log.e("HomeViewModel", "Failed to load AniList stats", e)
